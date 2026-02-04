@@ -1,20 +1,51 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../tailwind.config.js";
+@import "tailwindcss";
 
-@layer components {
-  .input {
-    @apply w-full rounded-xl bg-zinc-900 border border-white/20 px-3 py-2 text-white
-           focus:outline-none focus:ring-2 focus:ring-blue-500;
+@layer base {
+  html, body {
+    height: 100%;
+    overscroll-behavior: none;
+    overflow-x: hidden;
+    background: #000000;
+    color: white;
   }
 
-  .textarea {
-    @apply w-full rounded-xl bg-zinc-900 border border-white/20 px-3 py-2 text-white
-           focus:outline-none focus:ring-2 focus:ring-blue-500;
+  body {
+    @apply text-white font-sans;
+    margin: 0;
+    color-scheme: dark;
+    overscroll-behavior: none;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04];
+  }
+
+  .glass-soft {
+    @apply rounded-2xl border border-white/10 bg-white/[0.025];
   }
 
   .btn {
-    @apply px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white
-           disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white;
+  }
+
+  .btn-ghost {
+    @apply px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-sm;
+  }
+
+  .input {
+    @apply w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-white
+           focus:outline-none focus:ring-2 focus:ring-emerald-500/60;
+  }
+
+  .textarea {
+    @apply w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-white
+           focus:outline-none focus:ring-2 focus:ring-emerald-500/60;
+  }
+
+  .chip {
+    @apply text-xs px-2 py-1 rounded-full bg-white/[0.06] border border-white/10;
   }
 }

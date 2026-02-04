@@ -1,129 +1,190 @@
 <template>
-  <div class="p-6 space-y-6">
-    <div class="flex items-end justify-between">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-end justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold">Houses</h1>
-        <p class="text-white/70">Add houses with tags for matching later.</p>
+        <h1 class="text-3xl font-bold tracking-tight">Houses</h1>
+        <p class="text-white/60 mt-1">Listings and photos</p>
       </div>
-      <button
-        class="px-3 py-2 rounded-xl text-sm border border-white/10 hover:bg-white/10"
-        @click="load"
-      >
-        Refresh
-      </button>
+
+      <div class="flex items-center gap-2">
+        <button class="btn-ghost" @click="load" :disabled="loading">Refresh</button>
+        <button class="btn" @click="showAdd = true">+ Add</button>
+      </div>
     </div>
 
-    <!-- Add House -->
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <h2 class="font-semibold">Add house</h2>
+    <!-- Toolbar -->
+    <div class="glass p-4">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <div class="flex-1">
+          <input
+            class="input"
+            placeholder="Search by address, city, tags…"
+            v-model.trim="q"
+          />
+        </div>
 
-      <form class="mt-4 grid gap-3 md:grid-cols-2" @submit.prevent="createHouse">
+        <div class="flex items-center gap-2">
+          <button class="btn-ghost" @click="q = ''" :disabled="!q">Clear</button>
+          <div class="text-sm text-white/50">
+            {{ filtered.length }} result(s)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- List -->
+    <div class="space-y-3">
+      <div v-if="loading" class="text-white/60">Loading…</div>
+      <div v-else-if="error" class="text-red-300">{{ error }}</div>
+
+      <ul v-else class="space-y-3">
+        <li
+          v-for="h in filtered"
+          :key="h.id"
+          class="glass-soft p-4 hover:bg-white/[0.05] transition cursor-pointer"
+          @click="openHouse(h.id)"
+        >
+          <div class="flex gap-4">
+            <!-- Thumb -->
+            <div class="w-28 h-20 rounded-xl overflow-hidden border border-white/10 bg-black/30 shrink-0">
+              <img
+                v-if="coverUrls[h.id]"
+                :src="coverUrls[h.id]"
+                class="w-full h-full object-cover"
+                alt="House"
+              />
+              <div v-else class="w-full h-full grid place-items-center text-white/30 text-sm">
+                no photo
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-semibold truncate">
+                    {{ h.address }}
+                  </div>
+                  <div class="text-sm text-white/60 mt-1">
+                    {{ h.city || "—" }}
+                    <span class="mx-2 text-white/30">•</span>
+                    {{ h.rooms ?? "?" }} rooms
+                    <span class="mx-2 text-white/30">•</span>
+                    €{{ h.price ?? "—" }}
+                    <span v-if="h.size_m2" class="mx-2 text-white/30">•</span>
+                    <span v-if="h.size_m2">{{ h.size_m2 }} m²</span>
+                  </div>
+                </div>
+
+                <div class="text-xs text-white/45 whitespace-nowrap">
+                  {{ formatDate(h.created_at) }}
+                </div>
+              </div>
+
+              <!-- Tags -->
+              <div v-if="(h.tags || []).length" class="mt-3 flex flex-wrap gap-2">
+                <span v-for="t in h.tags" :key="t" class="chip">
+                  {{ t }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li v-if="filtered.length === 0" class="text-white/60">
+          No houses found.
+        </li>
+      </ul>
+    </div>
+
+    <!-- Add modal -->
+    <Modal
+      :open="showAdd"
+      title="Add house"
+      subtitle="Add details and upload photos (1–10)"
+      @close="showAdd = false"
+    >
+      <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createHouseAndClose">
         <div class="md:col-span-2">
-          <label class="text-sm text-white/70">Address *</label>
-          <input v-model.trim="form.address" required class="input mt-1" />
+          <label class="text-sm text-white/60">Address *</label>
+          <input class="input mt-1" v-model.trim="form.address" required />
         </div>
 
         <div>
-          <label class="text-sm text-white/70">City</label>
-          <input v-model.trim="form.city" class="input mt-1" />
+          <label class="text-sm text-white/60">City</label>
+          <input class="input mt-1" v-model.trim="form.city" />
         </div>
 
         <div>
-          <label class="text-sm text-white/70">Price (€)</label>
-          <input v-model.number="form.price" type="number" min="0" class="input mt-1" />
+          <label class="text-sm text-white/60">Price (€)</label>
+          <input class="input mt-1" type="number" min="0" v-model.number="form.price" />
         </div>
 
         <div>
-          <label class="text-sm text-white/70">Rooms</label>
-          <input v-model.number="form.rooms" type="number" min="0" class="input mt-1" />
+          <label class="text-sm text-white/60">Rooms</label>
+          <input class="input mt-1" type="number" min="0" v-model.number="form.rooms" />
         </div>
 
         <div>
-          <label class="text-sm text-white/70">Size (m²)</label>
-          <input v-model.number="form.size_m2" type="number" min="0" class="input mt-1" />
+          <label class="text-sm text-white/60">Size (m²)</label>
+          <input class="input mt-1" type="number" min="0" v-model.number="form.size_m2" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/70">Tags (comma separated)</label>
-          <input v-model.trim="tagsInput" placeholder="big house, garden, garage"
-            class="input mt-1" />
+          <label class="text-sm text-white/60">Tags (comma separated)</label>
+          <input class="input mt-1" v-model.trim="tagsInput" placeholder="garden, garage, renovated" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/70">Description</label>
-          <textarea v-model.trim="form.description" rows="3"
-            class="textarea mt-1"></textarea>
+          <label class="text-sm text-white/60">Description</label>
+          <textarea class="textarea mt-1" rows="4" v-model.trim="form.description"></textarea>
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/70">Photos (1–10)</label>
+          <label class="text-sm text-white/60">Photos (1–10)</label>
           <input
             type="file"
             accept="image/*"
             multiple
             @change="onFilesChange"
-            class="mt-1 block w-full text-sm text-white/70"
+            class="mt-2 block w-full text-sm text-white/70"
           />
-          <p class="mt-1 text-xs text-white/60" v-if="selectedFiles.length">
+          <p class="text-xs text-white/50 mt-1" v-if="selectedFiles.length">
             Selected: {{ selectedFiles.length }} file(s)
           </p>
         </div>
 
-        <div class="md:col-span-2 flex items-center gap-3">
-          <button
-            type="submit"
-            class="btn"
-            :disabled="creating"
-          >
+        <div class="md:col-span-2 flex items-center gap-3 mt-2">
+          <button class="btn" :disabled="creating">
             {{ creating ? "Saving..." : "Save house" }}
           </button>
+          <button type="button" class="btn-ghost" @click="showAdd = false">Cancel</button>
+
           <p v-if="createError" class="text-sm text-red-300">{{ createError }}</p>
           <p v-if="createOk" class="text-sm text-green-300">Saved ✅</p>
         </div>
       </form>
-    </div>
-
-    <!-- List -->
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div v-if="loading" class="text-white/70">Loading…</div>
-      <div v-else-if="error" class="text-red-300">{{ error }}</div>
-
-      <ul v-else class="space-y-2">
-        <li v-for="h in houses" :key="h.id" class="rounded-xl border border-white/10 bg-white/5 p-3">
-          <img
-            v-if="coverUrls[h.id]"
-            :src="coverUrls[h.id]"
-            class="mb-2 h-44 w-full object-cover rounded-xl border border-white/10"
-          />
-          <RouterLink :to="`/houses/${h.id}`" class="font-semibold hover:underline">
-            {{ h.address }}
-          </RouterLink>
-          <div class="text-sm text-white/70">
-            {{ h.city || "—" }} • {{ h.rooms ?? "?" }} rooms • €{{ h.price ?? "—" }}
-          </div>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <span v-for="t in (h.tags || [])" :key="t" class="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-              {{ t }}
-            </span>
-          </div>
-        </li>
-
-        <li v-if="houses.length === 0" class="text-white/60">
-          No houses yet.
-        </li>
-      </ul>
-    </div>
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { RouterLink } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import Modal from "../components/Modal.vue";
+
+const router = useRouter();
 
 const houses = ref([]);
+const coverUrls = ref({});
+
 const loading = ref(false);
 const error = ref("");
+
+const q = ref("");
+const showAdd = ref(false);
 
 const creating = ref(false);
 const createError = ref("");
@@ -140,23 +201,10 @@ const form = ref({
 });
 
 const tagsInput = ref("");
-const selectedFiles = ref([]); // File[]
-const coverUrls = ref({}); // { [houseId]: signedUrl }
+const selectedFiles = ref([]);
 
 const onFilesChange = (e) => {
-  const files = Array.from(e.target.files || []);
-  selectedFiles.value = files.slice(0, 10); // hard cap to 10
-};
-
-const randomId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-
-const getSignedUrl = async (path) => {
-  const { data, error } = await supabase.storage
-    .from("house-photos")
-    .createSignedUrl(path, 60 * 60); // 1 hour
-
-  if (error) throw error;
-  return data.signedUrl;
+  selectedFiles.value = Array.from(e.target.files || []).slice(0, 10);
 };
 
 const parseTags = (s) =>
@@ -164,6 +212,41 @@ const parseTags = (s) =>
     .split(",")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
+
+const formatDate = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+};
+
+const getSignedUrl = async (path) => {
+  const { data, error } = await supabase.storage
+    .from("house-photos")
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) throw error;
+  return data.signedUrl;
+};
+
+const openHouse = (id) => router.push(`/houses/${id}`);
+
+const filtered = computed(() => {
+  const term = q.value.toLowerCase();
+  if (!term) return houses.value;
+
+  return houses.value.filter((h) => {
+    const hay = [
+      h.address,
+      h.city,
+      ...(h.tags || []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return hay.includes(term);
+  });
+});
 
 const load = async () => {
   loading.value = true;
@@ -185,7 +268,6 @@ const load = async () => {
 
     houses.value = data || [];
 
-    // Build cover URLs (signed)
     const map = {};
     for (const h of houses.value) {
       const cover = h.house_photos?.find((p) => p.is_cover) || h.house_photos?.[0];
@@ -217,7 +299,6 @@ const createHouse = async () => {
       tags: parseTags(tagsInput.value),
     };
 
-    // 1) Create the house row
     const { data: house, error: e } = await supabase
       .from("houses")
       .insert(payload)
@@ -226,47 +307,47 @@ const createHouse = async () => {
 
     if (e) throw e;
 
-    // 2) Upload photos (optional, but if provided: 1–10)
-    const files = selectedFiles.value.slice(0, 10);
-    if (files.length > 0) {
-      const photoRows = [];
+    await supabase.from("activity_log").insert({
+      type: "create",
+      entity: "house",
+      entity_id: house.id,
+    });
 
+    const files = selectedFiles.value.slice(0, 10);
+    if (files.length) {
+      const rows = [];
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
         const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `houses/${house.id}/${randomId()}.${ext}`;
+        const path = `houses/${house.id}/${crypto.randomUUID?.() || Date.now()}-${i}.${ext}`;
 
-        const { error: uploadErr } = await supabase.storage
-          .from("house-photos")
-          .upload(path, f, { upsert: false });
+        const up = await supabase.storage.from("house-photos").upload(path, f, { upsert: false });
+        if (up.error) throw up.error;
 
-        if (uploadErr) throw uploadErr;
-
-        photoRows.push({
-          house_id: house.id,
-          storage_path: path,
-          is_cover: i === 0, // first photo is cover
-        });
+        rows.push({ house_id: house.id, storage_path: path, is_cover: i === 0 });
       }
 
-      const { error: photosErr } = await supabase.from("house_photos").insert(photoRows);
-      if (photosErr) throw photosErr;
+      const ins = await supabase.from("house_photos").insert(rows);
+      if (ins.error) throw ins.error;
     }
 
-    // reset form
     form.value = { address: "", city: "", price: null, rooms: null, size_m2: null, description: "", tags: [] };
     tagsInput.value = "";
     selectedFiles.value = [];
 
-    // refresh list
     await load();
     createOk.value = true;
-    setTimeout(() => (createOk.value = false), 1500);
+    setTimeout(() => (createOk.value = false), 1200);
   } catch (err) {
     createError.value = err?.message || String(err);
   } finally {
     creating.value = false;
   }
+};
+
+const createHouseAndClose = async () => {
+  await createHouse();
+  if (!createError.value) showAdd.value = false;
 };
 
 onMounted(load);

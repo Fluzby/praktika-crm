@@ -1,25 +1,45 @@
 <template>
-  <div class="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6">
-      <h1 class="text-2xl font-bold">Login</h1>
-      <p class="text-white/70 mt-2">Admin access</p>
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-sm px-6">
+      <h1 class="text-xl font-semibold tracking-tight">
+        Login
+      </h1>
 
-      <form class="mt-6 space-y-3" @submit.prevent="login">
+      <p class="text-sm text-white/60 mt-1">
+        Admin access
+      </p>
+
+      <form class="mt-6 space-y-4" @submit.prevent="login">
         <div>
-          <label class="text-sm text-white/70">Email</label>
-          <input class="input mt-1" v-model.trim="email" type="email" required />
+          <label class="text-sm text-white/60">Email</label>
+          <input
+            type="email"
+            class="input mt-1"
+            v-model.trim="email"
+            required
+          />
         </div>
 
         <div>
-          <label class="text-sm text-white/70">Password</label>
-          <input class="input mt-1" v-model="password" type="password" required />
+          <label class="text-sm text-white/60">Password</label>
+          <input
+            type="password"
+            class="input mt-1"
+            v-model.trim="password"
+            required
+          />
         </div>
 
-        <button class="btn w-full" :disabled="loading">
-          {{ loading ? "Signing in..." : "Sign in" }}
+        <button
+          class="btn w-full mt-2"
+          :disabled="loading"
+        >
+          {{ loading ? "Signing in…" : "Sign in" }}
         </button>
 
-        <p v-if="error" class="text-sm text-red-300">{{ error }}</p>
+        <p v-if="error" class="text-sm text-red-300 mt-2">
+          {{ error }}
+        </p>
       </form>
     </div>
   </div>
@@ -31,6 +51,7 @@ import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 
 const router = useRouter();
+
 const email = ref("");
 const password = ref("");
 const loading = ref(false);
@@ -39,13 +60,19 @@ const error = ref("");
 const login = async () => {
   loading.value = true;
   error.value = "";
+
   const { error: e } = await supabase.auth.signInWithPassword({
     email: email.value,
     password: password.value,
   });
+
   loading.value = false;
 
-  if (e) return (error.value = e.message);
+  if (e) {
+    error.value = e.message;
+    return;
+  }
+
   router.push("/dashboard");
 };
 </script>

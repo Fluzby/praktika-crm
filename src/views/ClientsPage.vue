@@ -1,92 +1,147 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-end justify-between">
+    <!-- Header -->
+    <div class="flex items-end justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold">Clients</h1>
-        <p class="text-white/70">Contacts and notes.</p>
+        <h1 class="text-3xl font-bold tracking-tight">Clients</h1>
+        <p class="text-white/60 mt-1">Contacts and internal notes</p>
       </div>
-      <button class="px-3 py-2 rounded-xl text-sm border border-white/10 hover:bg-white/10" @click="load">
-        Refresh
-      </button>
+
+      <div class="flex items-center gap-2">
+        <button class="btn-ghost" @click="load" :disabled="loading">Refresh</button>
+        <button class="btn" @click="showAdd = true">+ Add</button>
+      </div>
     </div>
 
-    <!-- Add Client -->
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <h2 class="font-semibold">Add client</h2>
-
-      <form class="mt-4 grid gap-3 md:grid-cols-2" @submit.prevent="createClient">
-        <div>
-          <label class="text-sm text-white/70">Full name *</label>
-          <input class="input mt-1" v-model.trim="form.full_name" required />
+    <!-- Toolbar -->
+    <div class="glass p-4">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <div class="flex-1">
+          <input
+            class="input"
+            placeholder="Search name, phone, email, notes…"
+            v-model.trim="q"
+          />
         </div>
 
-        <div>
-          <label class="text-sm text-white/70">Phone</label>
-          <input class="input mt-1" v-model.trim="form.phone" />
+        <div class="flex items-center gap-2">
+          <button class="btn-ghost" @click="q = ''" :disabled="!q">Clear</button>
+          <div class="text-sm text-white/50">
+            {{ filtered.length }} result(s)
+          </div>
         </div>
-
-        <div>
-          <label class="text-sm text-white/70">Email</label>
-          <input class="input mt-1" v-model.trim="form.email" type="email" />
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="text-sm text-white/70">Notes</label>
-          <textarea class="textarea mt-1" rows="3" v-model.trim="form.notes"></textarea>
-        </div>
-
-        <div class="md:col-span-2 flex items-center gap-3">
-          <button class="btn" :disabled="creating">
-            {{ creating ? "Saving..." : "Save client" }}
-          </button>
-          <p v-if="createError" class="text-sm text-red-300">{{ createError }}</p>
-          <p v-if="createOk" class="text-sm text-green-300">Saved ✅</p>
-        </div>
-      </form>
+      </div>
     </div>
 
     <!-- List -->
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div v-if="loading" class="text-white/70">Loading…</div>
+    <div class="space-y-3">
+      <div v-if="loading" class="text-white/60">Loading…</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
 
-      <ul v-else class="space-y-2">
-        <li v-for="c in clients" :key="c.id" class="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="font-semibold">{{ c.full_name }}</div>
-              <div class="text-sm text-white/70 mt-1">
-                {{ c.phone || "—" }} • {{ c.email || "—" }}
+      <ul v-else class="space-y-3">
+        <li
+          v-for="c in filtered"
+          :key="c.id"
+          class="glass-soft p-4 hover:bg-white/[0.05] transition cursor-pointer"
+          @click="openClient(c.id)"
+        >
+          <div class="flex items-start justify-between gap-4">
+            <!-- Main -->
+            <div class="min-w-0">
+              <div class="font-semibold truncate">
+                {{ c.full_name }}
               </div>
-              <div v-if="c.notes" class="text-sm text-white/60 mt-1">
+
+              <div class="text-sm text-white/60 mt-1">
+                {{ c.phone || "—" }}
+                <span class="mx-2 text-white/30">•</span>
+                {{ c.email || "—" }}
+              </div>
+
+              <div
+                v-if="c.notes"
+                class="mt-2 text-sm text-white/50 line-clamp-2"
+              >
                 {{ c.notes }}
               </div>
             </div>
 
-            <button
-              class="text-sm px-3 py-2 rounded-xl border border-white/10 hover:bg-white/10"
-              @click="removeClient(c.id)"
-            >
-              Delete
-            </button>
+            <!-- Meta -->
+            <div class="text-xs text-white/45 whitespace-nowrap">
+              {{ formatDate(c.created_at) }}
+            </div>
           </div>
         </li>
 
-        <li v-if="clients.length === 0" class="text-white/60">
-          No clients yet.
+        <li v-if="filtered.length === 0" class="text-white/60">
+          No clients found.
         </li>
       </ul>
     </div>
+
+    <!-- Add modal -->
+    <Modal
+      :open="showAdd"
+      title="Add client"
+      subtitle="Contact details and internal notes"
+      @close="showAdd = false"
+    >
+      <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createClientAndClose">
+        <div class="md:col-span-2">
+          <label class="text-sm text-white/60">Full name *</label>
+          <input class="input mt-1" v-model.trim="form.full_name" required />
+        </div>
+
+        <div>
+          <label class="text-sm text-white/60">Phone</label>
+          <input class="input mt-1" v-model.trim="form.phone" />
+        </div>
+
+        <div>
+          <label class="text-sm text-white/60">Email</label>
+          <input class="input mt-1" type="email" v-model.trim="form.email" />
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-sm text-white/60">Notes</label>
+          <textarea
+            class="textarea mt-1"
+            rows="4"
+            v-model.trim="form.notes"
+            placeholder="Internal notes (preferences, behavior, reminders…)"
+          ></textarea>
+        </div>
+
+        <div class="md:col-span-2 flex items-center gap-3 mt-2">
+          <button class="btn" :disabled="creating">
+            {{ creating ? "Saving..." : "Save client" }}
+          </button>
+          <button type="button" class="btn-ghost" @click="showAdd = false">
+            Cancel
+          </button>
+
+          <p v-if="createError" class="text-sm text-red-300">{{ createError }}</p>
+          <p v-if="createOk" class="text-sm text-green-300">Saved ✅</p>
+        </div>
+      </form>
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import Modal from "../components/Modal.vue";
+
+const router = useRouter();
 
 const clients = ref([]);
 const loading = ref(false);
 const error = ref("");
+
+const q = ref("");
+const showAdd = ref(false);
 
 const creating = ref(false);
 const createError = ref("");
@@ -99,9 +154,37 @@ const form = ref({
   notes: "",
 });
 
+const formatDate = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+};
+
+const openClient = (id) => router.push(`/clients/${id}`);
+
+const filtered = computed(() => {
+  const term = q.value.toLowerCase();
+  if (!term) return clients.value;
+
+  return clients.value.filter((c) => {
+    const hay = [
+      c.full_name,
+      c.phone,
+      c.email,
+      c.notes,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return hay.includes(term);
+  });
+});
+
 const load = async () => {
   loading.value = true;
   error.value = "";
+
   try {
     const { data, error: e } = await supabase
       .from("clients")
@@ -135,8 +218,9 @@ const createClient = async () => {
 
     form.value = { full_name: "", phone: "", email: "", notes: "" };
     await load();
+
     createOk.value = true;
-    setTimeout(() => (createOk.value = false), 1500);
+    setTimeout(() => (createOk.value = false), 1200);
   } catch (err) {
     createError.value = err?.message || String(err);
   } finally {
@@ -144,11 +228,9 @@ const createClient = async () => {
   }
 };
 
-const removeClient = async (id) => {
-  if (!confirm("Delete this client?")) return;
-  const { error: e } = await supabase.from("clients").delete().eq("id", id);
-  if (e) alert(e.message);
-  await load();
+const createClientAndClose = async () => {
+  await createClient();
+  if (!createError.value) showAdd.value = false;
 };
 
 onMounted(load);
