@@ -185,6 +185,82 @@
 
           <p v-if="err" class="text-sm text-red-300 mt-3">{{ err }}</p>
         </div>
+
+        <div class="glass-soft p-4">
+          <div class="text-sm font-semibold mb-3">
+            Matched clients
+          </div>
+
+          <div v-if="!matchedClients.length" class="text-xs text-white/60">
+            No clients matched yet.
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="m in matchedClients"
+              :key="m.clients.id"
+              class="flex items-center justify-between text-sm cursor-pointer hover:bg-white/5 rounded-md px-2 py-1"
+              @click="$router.push(`/clients/${m.clients.id}`)"
+            >
+              <div class="truncate">
+                {{ m.clients.full_name }}
+              </div>
+
+              <select
+                v-model="m.status"
+                class="text-xs bg-white/10 rounded px-2 py-0.5"
+                @change="updateMatchStatus(m)"
+              >
+                <option value="suggested">Suggested</option>
+                <option value="contacted">Contacted</option>
+                <option value="viewed">Viewed</option>
+                <option value="interested">Interested</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-2">
+            <select
+              v-model="selectedClientId"
+              class="input flex-1"
+            >
+              <option value="">Add client…</option>
+              <option
+                v-for="c in allClients"
+                :key="c.id"
+                :value="c.id"
+              >
+                {{ c.full_name }}
+              </option>
+            </select>
+
+            <button
+              class="btn-primary"
+              @click="addManualMatch"
+              :disabled="!selectedClientId"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-soft p-4">
+          <div class="font-semibold mb-3">Activity</div>
+
+          <div v-if="!activity.length" class="text-xs text-white/60">
+            No activity yet.
+          </div>
+
+          <div v-else class="space-y-2 text-xs">
+            <div v-for="a in activity" :key="a.id">
+              <span class="text-white/70">{{ a.message }}</span>
+              <span class="text-white/40 ml-2">
+                {{ new Date(a.created_at).toLocaleString() }}
+              </span>
+            </div>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
@@ -193,9 +269,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, onBeforeUnmount } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/activity";
 
 const route = useRoute();
 const router = useRouter();
@@ -207,6 +284,10 @@ const err = ref("");
 const savingCover = ref(false);
 const saving = ref(false);
 const saveMsg = ref("");
+const matchedClients = ref([]);
+const allClients = ref([]);
+const selectedClientId = ref(null);
+const activity = ref([]);
 
 const edit = ref({
   title: "",
@@ -233,6 +314,65 @@ const parseTags = (s) =>
 const randomId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
 const coverPhoto = computed(() => photos.value.find(p => p.is_cover) || photos.value[0] || null);
+
+const loadMatchedClients = async () => {
+  if (!house.value?.id) return;
+
+  const { data, error } = await supabase
+    .from("house_matches")
+    .select("created_at, source, status, clients(id, full_name)")
+    .eq("house_id", house.value.id)
+    .order("created_at", { ascending: false });
+
+  if (!error) matchedClients.value = data || [];
+};
+
+const loadAllClients = async () => {
+  const { data } = await supabase
+    .from("clients")
+    .select("id, full_name")
+    .order("full_name");
+
+  allClients.value = data || [];
+};
+
+const addManualMatch = async () => {
+  if (!selectedClientId.value) return;
+
+  await supabase.from("house_matches").upsert({
+    house_id: house.value.id,
+    client_id: selectedClientId.value,
+    source: "manual",
+  });
+
+  selectedClientId.value = null;
+  await loadMatchedClients();
+};
+
+const updateMatchStatus = async (m) => {
+  await supabase
+    .from("house_matches")
+    .update({ status: m.status })
+    .eq("client_id", m.clients.id)
+    .eq("house_id", house.value.id);
+
+  await supabase.from("activity_log").insert({
+    entity_type: "house",
+    entity_id: house.value.id,
+    message: `Client marked as ${m.status}`,
+  });
+};
+
+const loadActivity = async () => {
+  const { data } = await supabase
+    .from("activity_log")
+    .select("*")
+    .eq("entity_type", "house")
+    .eq("entity_id", house.value.id)
+    .order("created_at", { ascending: false });
+
+  activity.value = data || [];
+};
 
 const signedUrl = async (path) => {
   const { data, error } = await supabase.storage
@@ -281,6 +421,8 @@ const load = async () => {
     });
   }
   photos.value = withUrls;
+
+  await loadMatchedClients();
 };
 
 const saveHouse = async () => {
@@ -343,6 +485,8 @@ const deleteHouse = async () => {
       const r = await supabase.storage.from("house-photos").remove(paths);
       if (r.error) throw r.error;
     }
+
+    await logActivity({ type: "delete", entity: "house", entity_id: id, label: house.value?.address });
 
     router.push("/houses");
   } catch (e) {
@@ -435,4 +579,15 @@ const deletePhoto = async (p) => {
 };
 
 onMounted(load);
+onMounted(loadAllClients);
+onMounted(loadActivity);
+onMounted(() => {
+  const handler = (e) => {
+    if (e?.detail?.houseId === house.value?.id) {
+      loadMatchedClients();
+    }
+  };
+  window.addEventListener("match-changed", handler);
+  onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
+});
 </script>

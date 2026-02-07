@@ -132,6 +132,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 
 const router = useRouter();
@@ -213,8 +214,10 @@ const createClient = async () => {
       notes: form.value.notes || null,
     };
 
-    const { error: e } = await supabase.from("clients").insert(payload);
+    const { data: clientRow, error: e } = await supabase.from("clients").insert(payload).select().single();
     if (e) throw e;
+
+    await logActivity({ type: "create", entity: "client", entity_id: clientRow.id, label: payload.full_name });
 
     form.value = { full_name: "", phone: "", email: "", notes: "" };
     await load();

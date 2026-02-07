@@ -1,0 +1,177 @@
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import OpenAI from "https://esm.sh/openai@4.52.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const { client_id, force } = await req.json();
+    if (!client_id) {
+      return new Response(JSON.stringify({ error: "Missing client_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Try cache first (unless forced)
+    if (!force) {
+      const { data: cached } = await supabase
+        .from("ai_match_cache")
+        .select("results, updated_at")
+        .eq("client_id", client_id)
+        .maybeSingle();
+
+      if (cached?.results) {
+        const ageMs = Date.now() - new Date(cached.updated_at).getTime();
+        const oneDay = 24 * 60 * 60 * 1000;
+
+        if (ageMs < oneDay) {
+          return new Response(JSON.stringify(cached.results), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
+    // 1️⃣ Load client
+    const { data: client, error: cErr } = await supabase
+      .from("clients")
+      .select("id, full_name, notes, min_price, max_price, min_rooms, max_rooms, preferred_tags")
+      .eq("id", client_id)
+      .single();
+
+    if (cErr || !client) throw cErr;
+
+    // 2️⃣ Load candidate houses
+    let q = supabase
+      .from("houses")
+      .select("id, address, city, price, rooms, tags, description")
+      .limit(20);
+
+    if (client.min_price != null) q = q.gte("price", client.min_price);
+    if (client.max_price != null) q = q.lte("price", client.max_price);
+    if (client.min_rooms != null) q = q.gte("rooms", client.min_rooms);
+    if (client.max_rooms != null) q = q.lte("rooms", client.max_rooms);
+
+    const { data: houses } = await q;
+    if (!houses || houses.length === 0) {
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 3️⃣ Build AI prompt
+    const prompt = `
+You are a real estate assistant.
+
+Client notes:
+${client.notes || "No notes"}
+
+Client preferences:
+- Min price: ${client.min_price ?? "any"}
+- Max price: ${client.max_price ?? "any"}
+- Min rooms: ${client.min_rooms ?? "any"}
+- Max rooms: ${client.max_rooms ?? "any"}
+- Preferred tags: ${(client.preferred_tags || []).join(", ") || "any"}
+
+Houses:
+${houses
+  .map(
+    (h, i) => `
+${i + 1}) id=${h.id}
+Address: ${h.address}
+City: ${h.city || "—"}
+Price: ${h.price ?? "—"}
+Rooms: ${h.rooms ?? "—"}
+Tags: ${(h.tags || []).join(", ") || "—"}
+Description: ${h.description || "—"}`
+  )
+  .join("\n")}
+
+TASK:
+Rank the houses from best to worst for this client.
+
+Return ONLY valid JSON in this exact format:
+{
+  "results": [
+    { "house_id": "uuid", "reason": "short explanation" }
+  ]
+}
+IMPORTANT:
+- house_id MUST be copied exactly from the "id=" field of a house above.
+- house_id MUST be a UUID string (contains letters a-f and dashes).
+- NEVER return price, rooms, address, or any other value as house_id.
+- Return at most 5 results.
+`;
+
+    // 4️⃣ Call OpenAI
+    const openai = new OpenAI({
+      apiKey: Deno.env.get("OPENAI_API_KEY"),
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content!);
+
+    const raw = parsed.results || [];
+    const isUuid = (s: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+    const valid = raw
+      .filter((r: any) => r && typeof r.house_id === "string" && isUuid(r.house_id))
+      .slice(0, 5);
+
+    await supabase.from("ai_match_cache").upsert(
+      {
+        client_id,
+        results: valid,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "client_id" }
+    );
+
+    await supabase.from("house_matches").upsert(
+      valid.map((r: any) => ({
+        client_id,
+        house_id: r.house_id,
+        source: "ai",
+      })),
+      { onConflict: "client_id,house_id" }
+    );
+
+    await supabase.from("activity_log").insert({
+      entity_type: "client",
+      entity_id: client_id,
+      message: "AI matched houses",
+    });
+
+    return new Response(JSON.stringify(valid), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

@@ -133,16 +133,19 @@
           </ul>
         </div>
 
-        <!-- Notes / Activity -->
         <div class="glass-soft p-6">
-          <h2 class="font-semibold">Notes</h2>
-          <p class="text-sm text-white/60 mt-2">
-            This panel can later show tasks, reminders, or “recent changes”.
-          </p>
-
-          <div class="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-white/60">
-            Nothing here yet.
-          </div>
+          <h2 class="font-semibold mb-3">Recent activity</h2>
+          <ul class="space-y-2 text-sm text-white/60">
+            <li v-for="a in activity" :key="a.id" class="flex items-center justify-between gap-3">
+              <span class="truncate">
+                {{ a.type }} {{ a.entity }}<span v-if="a.label"> — {{ a.label }}</span>
+              </span>
+              <span class="text-xs text-white/40 whitespace-nowrap">
+                {{ new Date(a.created_at).toLocaleDateString() }}
+              </span>
+            </li>
+            <li v-if="activity.length===0">No recent activity.</li>
+          </ul>
         </div>
       </aside>
     </div>
@@ -262,6 +265,7 @@
 import { ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 
 const clientsCount = ref(null);
@@ -270,6 +274,7 @@ const photosCount = ref(null);
 
 const recentClients = ref([]);
 const recentHouses = ref([]);
+const activity = ref([]);
 
 const loading = ref(false);
 const error = ref("");
@@ -357,8 +362,15 @@ const load = async () => {
     if (cRecent.error) throw cRecent.error;
     if (hRecent.error) throw hRecent.error;
 
+    const a = await supabase
+      .from("activity_log")
+      .select("id,type,entity,label,created_at")
+      .order("created_at", { ascending: false })
+      .limit(6);
+
     recentClients.value = cRecent.data || [];
     recentHouses.value = hRecent.data || [];
+    activity.value = a.data || [];
 
     lastUpdated.value = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
@@ -448,8 +460,10 @@ const createClient = async () => {
       notes: clientForm.value.notes || null,
     };
 
-    const { error: e } = await supabase.from("clients").insert(payload);
+    const { data: clientRow, error: e } = await supabase.from("clients").insert(payload).select().single();
     if (e) throw e;
+
+    await logActivity({ type: "create", entity: "client", entity_id: clientRow.id, label: payload.full_name });
 
     clientForm.value = { full_name: "", phone: "", email: "", notes: "" };
     await load();

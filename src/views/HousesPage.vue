@@ -173,6 +173,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 
 const router = useRouter();
@@ -307,11 +308,7 @@ const createHouse = async () => {
 
     if (e) throw e;
 
-    await supabase.from("activity_log").insert({
-      type: "create",
-      entity: "house",
-      entity_id: house.id,
-    });
+    await logActivity({ type: "create", entity: "house", entity_id: house.id, label: house.address });
 
     const files = selectedFiles.value.slice(0, 10);
     if (files.length) {
