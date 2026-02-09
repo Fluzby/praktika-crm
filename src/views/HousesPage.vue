@@ -92,83 +92,195 @@
       </ul>
     </div>
 
-    <Modal
-      :open="showAdd"
-      :title="t.add_house"
-      :subtitle="t.add_house_subtitle"
-      @close="showAdd = false"
-    >
-      <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createHouseAndClose">
-        <div class="md:col-span-2">
-          <label class="text-sm text-white/60">{{ t.address }} *</label>
-          <input class="input mt-1" v-model.trim="form.address" required />
-        </div>
+    <teleport to="body">
+      <div
+        v-if="showAdd"
+        class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+        @keydown.esc="closeAdd"
+        tabindex="-1"
+      >
+        <div class="absolute inset-0" @click="closeAdd"></div>
 
-        <div>
-          <label class="text-sm text-white/60">{{ t.city }}</label>
-          <input class="input mt-1" v-model.trim="form.city" />
-        </div>
+        <div
+          class="relative bg-black/90 border border-white/10 rounded-2xl w-[90vw] max-w-5xl max-h-[90vh] flex flex-col"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">{{ t.add_house }}</h2>
+              <p class="text-sm text-white/60 mt-1">{{ t.add_house_subtitle }}</p>
+            </div>
 
-        <div>
-          <label class="text-sm text-white/60">{{ t.price }}</label>
-          <input class="input mt-1" type="number" min="0" v-model.number="form.price" />
-        </div>
+            <button
+              class="h-10 w-10 rounded-xl border border-white/10 hover:bg-white/10 grid place-items-center"
+              @click="closeAdd"
+              :aria-label="t.close"
+            >
+              ✕
+            </button>
+          </div>
 
-        <div>
-          <label class="text-sm text-white/60">{{ t.rooms }}</label>
-          <input class="input mt-1" type="number" min="0" v-model.number="form.rooms" />
-        </div>
+          <div class="px-6 pt-4 pb-3 border-b border-white/10">
+            <div class="relative">
+              <input
+                v-model="fieldSearch"
+                :placeholder="t.search_fields_placeholder"
+                class="w-full input pr-10"
+              />
+              <button
+                v-if="fieldSearch"
+                type="button"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                @click="fieldSearch = ''"
+                :aria-label="t.clear"
+                :title="t.clear"
+              >
+                ✕
+              </button>
+            </div>
+            <div class="text-xs text-white/40 mt-1">
+              {{ t.search_across_all_fields }}
+            </div>
+          </div>
 
-        <div>
-          <label class="text-sm text-white/60">{{ t.size_m2 }}</label>
-          <input class="input mt-1" type="number" min="0" v-model.number="form.size_m2" />
-        </div>
+          <div class="px-6 py-4 overflow-y-auto flex-1 space-y-8">
+            <div class="glass-soft p-4 rounded-xl">
+              <div class="text-xs text-white/50">{{ t.preview }}</div>
+              <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div class="text-xs text-white/50">{{ t.address }}</div>
+                  <div class="tabular-nums">{{ previewAddress }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-white/50">{{ t.city }}</div>
+                  <div class="tabular-nums">{{ previewCity }}</div>
+                </div>
+              </div>
+            </div>
 
-        <div class="md:col-span-2">
-          <label class="text-sm text-white/60">{{ t.tags }}</label>
-          <input class="input mt-1" v-model.trim="tagsInput" :placeholder="t.tags_placeholder" />
-        </div>
+            <div
+              v-if="Object.keys(filteredGroups).length === 0"
+              class="text-sm text-white/50 text-center py-12"
+            >
+              {{ t.no_fields_match_search }}
+            </div>
 
-        <div class="md:col-span-2">
-          <label class="text-sm text-white/60">{{ t.description }}</label>
-          <textarea class="textarea mt-1" rows="4" v-model.trim="form.description"></textarea>
-        </div>
+            <form id="add-house-form" class="space-y-8" @submit.prevent="createHouseAndClose">
+              <div
+                v-for="(group, groupKey) in filteredGroups"
+                :key="groupKey"
+                class="glass-soft p-4 rounded-xl"
+              >
+                <h3 class="text-sm font-semibold mb-3">
+                  {{ groupLabel(group) }}
+                </h3>
 
-        <div class="md:col-span-2">
-          <label class="text-sm text-white/60">{{ t.photos }} (1–10)</label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            @change="onFilesChange"
-            class="mt-2 block w-full text-sm text-white/70"
-          />
-          <p class="text-xs text-white/50 mt-1" v-if="selectedFiles.length">
-            {{ t.selected_files }}: {{ selectedFiles.length }} {{ t.files }}
-          </p>
-        </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div
+                    v-for="field in group.fields"
+                    :key="field.key"
+                  >
+                    <label class="text-xs text-white/50">
+                      {{ fieldLabel(field) }}
+                    </label>
 
-        <div class="md:col-span-2 flex items-center gap-3 mt-2">
-          <button class="btn" :disabled="creating">
-            {{ creating ? t.saving : t.save }}
-          </button>
-          <button type="button" class="btn-ghost" @click="showAdd = false">{{ t.cancel }}</button>
+                    <input
+                      v-if="field.type === 'text'"
+                      class="input mt-1"
+                      v-model="newHouse.raw_data[field.key]"
+                    />
 
-          <p v-if="createError" class="text-sm text-red-300">{{ createError }}</p>
-          <p v-if="createOk" class="text-sm text-green-300">{{ t.saved }}</p>
+                    <input
+                      v-else-if="field.type === 'number'"
+                      type="number"
+                      class="input mt-1"
+                      v-model="newHouse.raw_data[field.key]"
+                    />
+
+                    <input
+                      v-else-if="field.type === 'date'"
+                      type="date"
+                      class="input mt-1"
+                      v-model="newHouse.raw_data[field.key]"
+                    />
+
+                    <select
+                      v-else-if="field.type === 'boolean'"
+                      class="input mt-1"
+                      v-model="newHouse.raw_data[field.key]"
+                    >
+                      <option value="">—</option>
+                      <option value="Yes">{{ t.yes }}</option>
+                      <option value="No">{{ t.no }}</option>
+                    </select>
+
+                    <input
+                      v-else
+                      class="input mt-1"
+                      v-model="newHouse.raw_data[field.key]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass-soft p-4 rounded-xl">
+                <h3 class="text-sm font-semibold mb-3">
+                  {{ t.description }}
+                </h3>
+                <textarea class="textarea" rows="4" v-model.trim="newHouse.description"></textarea>
+              </div>
+
+              <div class="glass-soft p-4 rounded-xl">
+                <h3 class="text-sm font-semibold mb-3">
+                  {{ t.tags }}
+                </h3>
+                <input class="input" v-model.trim="newHouse.tagsInput" :placeholder="t.tags_placeholder" />
+              </div>
+
+              <div class="glass-soft p-4 rounded-xl">
+                <h3 class="text-sm font-semibold mb-3">
+                  {{ t.photos }} (1–10)
+                </h3>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  @change="onFilesChange"
+                  class="block w-full text-sm text-white/70"
+                />
+                <p class="text-xs text-white/50 mt-2" v-if="selectedFiles.length">
+                  {{ t.selected_files }}: {{ selectedFiles.length }} {{ t.files }}
+                </p>
+              </div>
+            </form>
+          </div>
+
+          <div class="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-2">
+            <p v-if="createError" class="text-sm text-red-300 mr-auto">{{ createError }}</p>
+            <p v-else-if="createOk" class="text-sm text-green-300 mr-auto">{{ t.saved }}</p>
+
+            <button class="btn-ghost" type="button" @click="closeAdd">
+              {{ t.cancel }}
+            </button>
+            <button class="btn" type="submit" form="add-house-form" :disabled="creating">
+              {{ creating ? t.saving : t.save }}
+            </button>
+          </div>
         </div>
-      </form>
-    </Modal>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
-import Modal from "../components/Modal.vue";
 import { useT } from "../lib/i18n";
+import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
+import { settings } from "../lib/settings";
 
 const router = useRouter();
 
@@ -185,20 +297,18 @@ const creating = ref(false);
 const createError = ref("");
 const createOk = ref(false);
 
-const form = ref({
-  address: "",
-  city: "",
-  price: null,
-  rooms: null,
-  size_m2: null,
+const newHouse = ref({
+  raw_data: {},
   description: "",
-  tags: [],
+  tagsInput: "",
 });
-
-const tagsInput = ref("");
+const fieldSearch = ref("");
 const selectedFiles = ref([]);
 
 const t = useT();
+
+const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
+const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
 
 const onFilesChange = (e) => {
   selectedFiles.value = Array.from(e.target.files || []).slice(0, 10);
@@ -209,6 +319,76 @@ const parseTags = (s) =>
     .split(",")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
+
+const filteredGroups = computed(() => {
+  const q = fieldSearch.value.trim().toLowerCase();
+  if (!q) return HOUSE_FIELD_GROUPS;
+
+  const result = {};
+  for (const [groupKey, group] of Object.entries(HOUSE_FIELD_GROUPS)) {
+    const matchedFields = group.fields.filter((f) => {
+      return (
+        f.label.toLowerCase().includes(q) ||
+        f.key.toLowerCase().includes(q)
+      );
+    });
+
+    if (matchedFields.length > 0) {
+      result[groupKey] = { ...group, fields: matchedFields };
+    }
+  }
+
+  return result;
+});
+
+const cleanStr = (v) => {
+  if (v === null || v === undefined) return "";
+  return String(v).trim();
+};
+
+const toNum = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).replace(/\s/g, "").replace("€", "").replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+};
+
+const makeAddressFromRaw = (raw) => {
+  const street = cleanStr(raw?.["Tänav"]);
+  const houseNo = cleanStr(raw?.["Maja nr"]);
+  const aptNo = cleanStr(raw?.["Korteri nr"]);
+  let addr = [street, houseNo].filter(Boolean).join(" ");
+  if (aptNo) addr += `-${aptNo}`;
+  return addr || cleanStr(raw?.["ID"]) || "—";
+};
+
+const makeCityFromRaw = (raw) =>
+  cleanStr(raw?.["Linn"]) || cleanStr(raw?.["Vald"]) || cleanStr(raw?.["Maakond"]) || "—";
+
+const previewAddress = computed(() => makeAddressFromRaw(newHouse.value.raw_data));
+const previewCity = computed(() => makeCityFromRaw(newHouse.value.raw_data));
+
+const prevBodyOverflow = ref("");
+watch(showAdd, (open) => {
+  if (typeof document === "undefined") return;
+  if (open) {
+    prevBodyOverflow.value = document.body.style.overflow || "";
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = prevBodyOverflow.value;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof document === "undefined") return;
+  document.body.style.overflow = prevBodyOverflow.value;
+});
+
+const closeAdd = () => {
+  fieldSearch.value = "";
+  showAdd.value = false;
+};
 
 const formatDate = (iso) => {
   if (!iso) return "—";
@@ -286,14 +466,19 @@ const createHouse = async () => {
   createOk.value = false;
 
   try {
+    const raw = newHouse.value.raw_data || {};
     const payload = {
-      address: form.value.address,
-      city: form.value.city || null,
-      price: form.value.price ?? null,
-      rooms: form.value.rooms ?? null,
-      size_m2: form.value.size_m2 ?? null,
-      description: form.value.description || null,
-      tags: parseTags(tagsInput.value),
+      external_id: cleanStr(raw["ID"]) || null,
+      deal_type: cleanStr(raw["Tehing"]) || null,
+      object_type: cleanStr(raw["Objekti liik"]) || null,
+      address: makeAddressFromRaw(raw),
+      city: makeCityFromRaw(raw) === "—" ? null : makeCityFromRaw(raw),
+      price: toNum(raw["Tehingu hind"]),
+      rooms: toNum(raw["Tube"]),
+      size_m2: toNum(raw["Üldpind (m2)"]),
+      description: newHouse.value.description || null,
+      tags: parseTags(newHouse.value.tagsInput),
+      raw_data: raw,
     };
 
     const { data: house, error: e } = await supabase
@@ -324,8 +509,8 @@ const createHouse = async () => {
       if (ins.error) throw ins.error;
     }
 
-    form.value = { address: "", city: "", price: null, rooms: null, size_m2: null, description: "", tags: [] };
-    tagsInput.value = "";
+    newHouse.value = { raw_data: {}, description: "", tagsInput: "" };
+    fieldSearch.value = "";
     selectedFiles.value = [];
 
     await load();
@@ -340,7 +525,7 @@ const createHouse = async () => {
 
 const createHouseAndClose = async () => {
   await createHouse();
-  if (!createError.value) showAdd.value = false;
+  if (!createError.value) closeAdd();
 };
 
 onMounted(load);

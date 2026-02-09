@@ -29,12 +29,24 @@
   }
 
   html.light, html.light body {
-    background: #f7f7f7;
+    /* Slightly warmer white to avoid the "gray app" look */
+    background: #fbfbfd;
     color: #0f0f0f;
   }
 
   html.light body {
     color-scheme: light;
+  }
+
+  html.light {
+    --nav-border: rgba(15, 15, 15, 0.12);
+    --nav-border-hover: rgba(15, 15, 15, 0.18);
+    --nav-bg: rgba(255, 255, 255, 0.7);
+    --nav-bg-hover: rgba(255, 255, 255, 0.92);
+    --nav-bg-active: rgba(16, 185, 129, 0.12);
+    --nav-border-active: rgba(16, 185, 129, 0.28);
+    --nav-text: rgba(15, 15, 15, 0.9);
+    --nav-text-active: rgba(15, 15, 15, 0.95);
   }
 }
 
@@ -70,23 +82,28 @@
   }
 
   .light .glass {
-    @apply border-black/10 bg-white/70;
+    /* Crisp cards on light theme: white, subtle border, real depth */
+    @apply border-black/10 bg-white;
+    box-shadow: 0 1px 0 rgba(15, 15, 15, 0.04), 0 12px 30px rgba(15, 15, 15, 0.06);
   }
 
   .light .glass-soft {
-    @apply border-black/10 bg-white/60;
+    @apply border-black/10 bg-white/80;
+    box-shadow: 0 1px 0 rgba(15, 15, 15, 0.03), 0 10px 24px rgba(15, 15, 15, 0.05);
   }
 
   .light .btn-ghost {
-    @apply border-black/10 bg-black/[0.02] text-black/80 hover:bg-black/[0.06];
+    @apply border-black/10 bg-white/80 text-black/80 hover:bg-black/[0.04];
   }
 
   .light .input {
     @apply bg-white border-black/10 text-black focus:ring-emerald-600/40;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   }
 
   .light .textarea {
     @apply bg-white border-black/10 text-black focus:ring-emerald-600/40;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   }
 
   .light .chip {
@@ -198,7 +215,8 @@ html.theme-plain body {
 .theme-plain .input,
 .theme-plain .textarea,
 .theme-plain .chip {
-  all: revert;
+  /* Don't revert to browser defaults. Keep the app's component styling. */
+  all: unset;
 }
 
 .theme-plain .text-white,
@@ -209,6 +227,73 @@ html.theme-plain body {
 .theme-plain .text-white\/45,
 .theme-plain .text-white\/40 {
   color: #000000;
+}
+
+.theme-plain body {
+  color-scheme: light;
+}
+
+.theme-plain .glass {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 15, 15, 0.1);
+  background: #ffffff;
+  box-shadow: 0 1px 0 rgba(15, 15, 15, 0.04), 0 12px 30px rgba(15, 15, 15, 0.06);
+}
+
+.theme-plain .glass-soft {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 15, 15, 0.1);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 1px 0 rgba(15, 15, 15, 0.03), 0 10px 24px rgba(15, 15, 15, 0.05);
+}
+
+.theme-plain .btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  background: #059669; /* emerald-600 */
+  color: #ffffff;
+}
+
+.theme-plain .btn:hover {
+  background: #047857; /* emerald-700 */
+}
+
+.theme-plain .btn-ghost {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 15, 15, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  color: rgba(15, 15, 15, 0.85);
+}
+
+.theme-plain .btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.theme-plain .input,
+.theme-plain .textarea {
+  width: 100%;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  border: 1px solid rgba(15, 15, 15, 0.1);
+  padding: 0.5rem 0.75rem;
+  color: rgba(15, 15, 15, 0.95);
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.theme-plain .input:focus,
+.theme-plain .textarea:focus {
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25);
+}
+
+.theme-plain .chip {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(15, 15, 15, 0.1);
+  color: rgba(15, 15, 15, 0.85);
 }
 
 .theme-plain .modal-backdrop {
@@ -265,4 +350,30 @@ html.theme-plain body {
 }
 .light .text-white\/40 {
   color: rgba(15, 15, 15, 0.4);
+}
+
+/* Fix utility backgrounds/borders that are hard-coded for dark mode */
+.light .bg-black\/30,
+.theme-plain .bg-black\/30 {
+  background-color: rgba(15, 15, 15, 0.03) !important;
+}
+
+.light .bg-black\/70,
+.theme-plain .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.light .bg-black\/90,
+.theme-plain .bg-black\/90 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.light .border-white\/10,
+.theme-plain .border-white\/10 {
+  border-color: rgba(15, 15, 15, 0.1) !important;
+}
+
+.light .border-white\/15,
+.theme-plain .border-white\/15 {
+  border-color: rgba(15, 15, 15, 0.12) !important;
 }

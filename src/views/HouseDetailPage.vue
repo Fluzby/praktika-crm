@@ -17,6 +17,22 @@
       <div class="flex items-center gap-2">
         <button class="btn-ghost" @click="load" :disabled="saving || savingCover">{{ t.refresh }}</button>
         <button
+          v-if="!isEditing"
+          class="btn-ghost"
+          @click="startEdit"
+          :disabled="saving || savingCover"
+        >
+          {{ t.edit }}
+        </button>
+        <button
+          v-else
+          class="btn-ghost"
+          @click="cancelEdit"
+          :disabled="saving || savingCover"
+        >
+          {{ t.cancel_edit }}
+        </button>
+        <button
           class="px-4 py-2 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10"
           @click="deleteHouse"
           :disabled="saving || savingCover"
@@ -43,7 +59,39 @@
             {{ t.details }}
           </h2>
 
-          <form class="grid gap-3 md:grid-cols-2" @submit.prevent="saveHouse">
+          <div v-if="!isEditing" class="grid gap-3 md:grid-cols-2">
+            <div class="md:col-span-2" v-if="house.title">
+              <div class="text-xs text-white/50">{{ t.title }}</div>
+              <div class="text-sm">{{ house.title }}</div>
+            </div>
+
+            <div class="md:col-span-2">
+              <div class="text-xs text-white/50">{{ t.address }}</div>
+              <div class="text-sm">{{ house.address }}</div>
+            </div>
+
+            <div>
+              <div class="text-xs text-white/50">{{ t.city }}</div>
+              <div class="text-sm">{{ house.city || "—" }}</div>
+            </div>
+
+            <div>
+              <div class="text-xs text-white/50">{{ t.price }}</div>
+              <div class="text-sm tabular-nums">€{{ house.price ?? "—" }}</div>
+            </div>
+
+            <div>
+              <div class="text-xs text-white/50">{{ t.rooms }}</div>
+              <div class="text-sm tabular-nums">{{ house.rooms ?? "—" }}</div>
+            </div>
+
+            <div>
+              <div class="text-xs text-white/50">{{ t.size_m2 }}</div>
+              <div class="text-sm tabular-nums">{{ house.size_m2 ?? "—" }}</div>
+            </div>
+          </div>
+
+          <form v-else class="grid gap-3 md:grid-cols-2" @submit.prevent="saveHouse">
             <div class="md:col-span-2">
               <label class="text-sm text-white/60">{{ t.title }}</label>
               <input class="input mt-1" v-model.trim="edit.title" :placeholder="t.optional_title" />
@@ -79,6 +127,73 @@
               <input class="input mt-1" v-model.trim="edit.tagsInput" :placeholder="t.tags_placeholder" />
             </div>
 
+            <div class="md:col-span-2 pt-3 border-t border-white/10">
+              <details>
+                <summary class="text-sm font-semibold text-white/80 cursor-pointer select-none">
+                  {{ t.xlsx_fields }}
+                </summary>
+
+                <div class="mt-4 space-y-6">
+                  <section
+                    v-for="(group, groupKey) in HOUSE_FIELD_GROUPS"
+                    :key="groupKey"
+                    class="glass-soft p-4 rounded-xl"
+                  >
+                    <h3 class="text-sm font-semibold mb-3 text-white/80">
+                      {{ groupLabel(group) }}
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div
+                        v-for="field in group.fields"
+                        :key="field.key"
+                      >
+                        <label class="text-xs text-white/50">
+                          {{ fieldLabel(field) }}
+                        </label>
+
+                        <input
+                          v-if="field.type === 'text'"
+                          class="input mt-1"
+                          v-model="rawDraft[field.key]"
+                        />
+
+                        <input
+                          v-else-if="field.type === 'number'"
+                          type="number"
+                          class="input mt-1"
+                          v-model="rawDraft[field.key]"
+                        />
+
+                        <input
+                          v-else-if="field.type === 'date'"
+                          type="date"
+                          class="input mt-1"
+                          v-model="rawDraft[field.key]"
+                        />
+
+                        <select
+                          v-else-if="field.type === 'boolean'"
+                          class="input mt-1"
+                          v-model="rawDraft[field.key]"
+                        >
+                          <option value="">—</option>
+                          <option value="Yes">{{ t.yes }}</option>
+                          <option value="No">{{ t.no }}</option>
+                        </select>
+
+                        <input
+                          v-else
+                          class="input mt-1"
+                          v-model="rawDraft[field.key]"
+                        />
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </details>
+            </div>
+
             <div class="md:col-span-2 flex items-center gap-3 mt-2">
               <button class="btn" :disabled="saving">
                 {{ saving ? t.saving : t.save_changes }}
@@ -98,22 +213,64 @@
           </h2>
 
           <textarea
+            v-if="isEditing"
             class="textarea"
             rows="4"
             v-model.trim="edit.description"
             :placeholder="t.internal_description"
           />
+          <div v-else class="text-sm text-white/70 whitespace-pre-wrap">
+            {{ house.description || "—" }}
+          </div>
         </div>
 
-        <div v-if="edit.tagsInput" class="glass-soft p-6">
+        <div v-if="isEditing ? edit.tagsInput : (house.tags || []).length" class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
             {{ t.tags }}
           </h2>
 
           <div class="flex flex-wrap gap-2">
-            <span v-for="t in parseTags(edit.tagsInput)" :key="t" class="chip">
+            <span v-for="t in (isEditing ? parseTags(edit.tagsInput) : (house.tags || []))" :key="t" class="chip">
               {{ t }}
             </span>
+          </div>
+        </div>
+
+        <div class="glass-soft p-6">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 class="text-sm font-semibold text-white/80">
+              {{ t.xlsx_fields }}
+            </h2>
+            <button class="btn-ghost" type="button" @click="showAllInfo = !showAllInfo">
+              {{ showAllInfo ? t.hide_all_info : t.show_all_info }}
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <details
+              v-for="(group, groupKey) in HOUSE_FIELD_GROUPS"
+              :key="groupKey"
+              class="rounded-xl border border-white/10 bg-black/30 p-4"
+              :open="showAllInfo"
+            >
+              <summary class="text-sm font-semibold text-white/80 cursor-pointer select-none">
+                {{ groupLabel(group) }}
+              </summary>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                <div
+                  v-for="field in group.fields"
+                  :key="field.key"
+                >
+                  <div class="text-xs text-white/50">
+                    {{ fieldLabel(field) }}
+                  </div>
+                  <div class="text-sm tabular-nums">
+                    {{ renderValue(field, house.raw_data) }}
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </section>
@@ -270,6 +427,9 @@ import { useRoute, useRouter, RouterLink } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import { useT } from "../lib/i18n";
+import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
+import { formatDate, formatEuro, formatEuro2, formatBool } from "@/lib/formatters";
+import { settings } from "../lib/settings";
 
 const route = useRoute();
 const router = useRouter();
@@ -285,8 +445,14 @@ const matchedClients = ref([]);
 const allClients = ref([]);
 const selectedClientId = ref(null);
 const activity = ref([]);
+const rawDraft = ref({});
+const isEditing = ref(false);
+const showAllInfo = ref(false);
 
 const t = useT();
+
+const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
+const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
 
 const edit = ref({
   title: "",
@@ -309,6 +475,26 @@ const parseTags = (s) =>
     .split(",")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
+
+const renderValue = (field, raw) => {
+  const v = raw?.[field.key];
+
+  if (v === null || v === undefined || v === "") return "—";
+  if (Array.isArray(v)) return v.filter((x) => x != null && x !== "").join(", ") || "—";
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+
+  if (field.type === "date") return formatDate(v);
+  if (field.type === "currency") return formatEuro(v);
+  if (field.type === "currency2") return formatEuro2(v);
+  if (field.type === "boolean") return formatBool(v);
+  return String(v);
+};
 
 const statusLabel = (s) => {
   const map = {
@@ -405,6 +591,7 @@ const load = async () => {
 
   if (h.error) return (err.value = h.error.message);
   house.value = h.data;
+  rawDraft.value = { ...(house.value?.raw_data || {}) };
 
   edit.value = {
     title: house.value.title || "",
@@ -438,6 +625,16 @@ const load = async () => {
   await loadActivity();
 };
 
+const startEdit = () => {
+  isEditing.value = true;
+};
+
+const cancelEdit = async () => {
+  isEditing.value = false;
+  showAllInfo.value = false;
+  await load();
+};
+
 const saveHouse = async () => {
   saving.value = true;
   err.value = "";
@@ -459,6 +656,7 @@ const saveHouse = async () => {
       size_m2: edit.value.size_m2 ?? null,
       description: edit.value.description || null,
       tags: parseTags(edit.value.tagsInput),
+      raw_data: rawDraft.value,
     };
 
     const { error: e } = await supabase.from("houses").update(payload).eq("id", id);
@@ -468,6 +666,7 @@ const saveHouse = async () => {
     setTimeout(() => (saveMsg.value = ""), 1500);
 
     await load();
+    isEditing.value = false;
   } catch (e) {
     err.value = e?.message || String(e);
   } finally {

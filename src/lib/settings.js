@@ -8,7 +8,6 @@ const DEFAULTS = {
   shortcuts: true,
   dashboardWidgets: {
     overview: true,
-    kpis: true,
     latest_listings: true,
     recent_clients: true,
     recent_activity: true,
