@@ -6,6 +6,7 @@ import ClientsPage from "../views/ClientsPage.vue";
 import ClientDetailPage from "../views/ClientDetailPage.vue";
 import HousesPage from "../views/HousesPage.vue";
 import HouseDetailPage from "../views/HouseDetailPage.vue";
+import SettingsPage from "../pages/SettingsPage.vue";
 import { supabase } from "../lib/supabase";
 
 const requireAuth = async () => {
@@ -25,6 +26,7 @@ const routes = [
       { path: "clients/:id", component: ClientDetailPage },
       { path: "houses", component: HousesPage },
       { path: "houses/:id", component: HouseDetailPage },
+      { path: "settings", component: SettingsPage },
     ],
     beforeEnter: async () => {
       const ok = await requireAuth();

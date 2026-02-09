@@ -6,10 +6,15 @@
       @keydown.esc="close"
       tabindex="-1"
     >
-      <div class="absolute inset-0 bg-black/70" @click="close"></div>
+      <div
+        class="absolute inset-0"
+        :class="settings.aiModalStrong ? 'bg-black/70 backdrop-blur-md' : 'bg-black/50 backdrop-blur-sm'"
+        @click="close"
+      ></div>
 
       <div
-        class="relative w-full max-w-2xl glass p-5"
+        class="relative w-full max-w-2xl rounded-2xl border border-white/10 p-5"
+        :class="settings.aiModalStrong ? 'bg-black/85 backdrop-blur-xl' : 'bg-black/70 backdrop-blur-lg'"
         role="dialog"
         aria-modal="true"
       >
@@ -22,7 +27,7 @@
           <button
             class="h-10 w-10 rounded-xl border border-white/10 hover:bg-white/10 grid place-items-center"
             @click="close"
-            aria-label="Close"
+            :aria-label="t.close"
           >
             ✕
           </button>
@@ -37,6 +42,9 @@
 </template>
 
 <script setup>
+import { settings } from "../lib/settings";
+import { useT } from "../lib/i18n";
+
 const props = defineProps({
   open: Boolean,
   title: { type: String, default: "" },
@@ -46,4 +54,5 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const close = () => emit("close");
+const t = useT();
 </script>

@@ -10,6 +10,7 @@
       <NavIcon to="/dashboard">📊</NavIcon>
       <NavIcon to="/clients">👥</NavIcon>
       <NavIcon to="/houses">🏠</NavIcon>
+      <NavIcon to="/settings">⚙️</NavIcon>
     </nav>
 
     <div class="flex-1"></div>
@@ -18,7 +19,7 @@
       class="w-14 h-14 rounded-2xl border border-red-500/20 bg-white/[0.02]
              hover:bg-red-500/10 text-red-300 transition grid place-items-center text-[20px]"
       @click="logout"
-      title="Logout"
+      :title="t.logout"
     >
       🚪
     </button>
@@ -29,8 +30,10 @@
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import NavIcon from "./SideRailIcon.vue";
+import { useT } from "../lib/i18n";
 
 const router = useRouter();
+const t = useT();
 
 const logout = async () => {
   await supabase.auth.signOut();

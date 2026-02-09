@@ -16,6 +16,15 @@
     color-scheme: dark;
     overscroll-behavior: none;
   }
+
+  html.light, html.light body {
+    background: #f7f7f7;
+    color: #0f0f0f;
+  }
+
+  html.light body {
+    color-scheme: light;
+  }
 }
 
 @layer components {
@@ -48,4 +57,97 @@
   .chip {
     @apply text-xs px-2 py-1 rounded-full bg-white/[0.06] border border-white/10;
   }
+
+  .light .glass {
+    @apply border-black/10 bg-white/70;
+  }
+
+  .light .glass-soft {
+    @apply border-black/10 bg-white/60;
+  }
+
+  .light .btn-ghost {
+    @apply border-black/10 bg-black/[0.02] text-black/80 hover:bg-black/[0.06];
+  }
+
+  .light .input {
+    @apply bg-white border-black/10 text-black focus:ring-emerald-600/40;
+  }
+
+  .light .textarea {
+    @apply bg-white border-black/10 text-black focus:ring-emerald-600/40;
+  }
+
+  .light .chip {
+    @apply bg-black/[0.04] border-black/10 text-black/80;
+  }
+}
+
+html.theme-glass,
+html.theme-glass body {
+  background: radial-gradient(1200px 800px at 20% 10%, #0a1a2b 0%, #05070b 60%, #030405 100%);
+  color: #eaf2ff;
+}
+
+html.theme-warm,
+html.theme-warm body {
+  background: radial-gradient(1200px 800px at 20% 10%, #2a1a12 0%, #0e0a08 60%, #070505 100%);
+  color: #fff2e5;
+}
+
+html.theme-brutalist,
+html.theme-brutalist body {
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
+.theme-glass .glass {
+  @apply border-white/15 bg-white/[0.06] backdrop-blur-md;
+}
+.theme-glass .glass-soft {
+  @apply border-white/10 bg-white/[0.04] backdrop-blur-md;
+}
+
+.theme-warm .glass {
+  @apply border-white/10 bg-amber-100/[0.06];
+}
+.theme-warm .glass-soft {
+  @apply border-white/10 bg-amber-100/[0.04];
+}
+
+.theme-brutalist .glass,
+.theme-brutalist .glass-soft {
+  @apply border-white/80 bg-white/[0.02] rounded-none;
+}
+.theme-brutalist .btn,
+.theme-brutalist .btn-ghost,
+.theme-brutalist .input,
+.theme-brutalist .textarea {
+  @apply rounded-none;
+}
+
+.theme-brutalist .btn-ghost {
+  @apply border-white/70;
+}
+
+.light .text-white {
+  color: #0f0f0f;
+}
+.light .text-white\/80 {
+  color: rgba(15, 15, 15, 0.8);
+}
+.light .text-white\/70 {
+  color: rgba(15, 15, 15, 0.7);
+}
+.light .text-white\/60 {
+  color: rgba(15, 15, 15, 0.6);
+}
+.light .text-white\/50 {
+  color: rgba(15, 15, 15, 0.5);
+}
+.light .text-white\/45 {
+  color: rgba(15, 15, 15, 0.45);
+}
+.light .text-white\/40 {
+  color: rgba(15, 15, 15, 0.4);
 }

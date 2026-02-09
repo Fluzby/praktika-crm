@@ -2,26 +2,25 @@
   <div class="min-h-screen flex items-center justify-center">
     <div class="w-full max-w-sm px-6">
       <h1 class="text-xl font-semibold tracking-tight">
-        Login
+        {{ t.login }}
       </h1>
 
       <p class="text-sm text-white/60 mt-1">
-        Admin access
+        {{ t.admin_access }}
       </p>
 
       <form class="mt-6 space-y-4" @submit.prevent="login">
         <div>
-          <label class="text-sm text-white/60">Email</label>
+          <label class="text-sm text-white/60">{{ t.email_or_username }}</label>
           <input
-            type="email"
             class="input mt-1"
-            v-model.trim="email"
+            v-model.trim="username"
             required
           />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Password</label>
+          <label class="text-sm text-white/60">{{ t.password }}</label>
           <input
             type="password"
             class="input mt-1"
@@ -34,11 +33,11 @@
           class="btn w-full mt-2"
           :disabled="loading"
         >
-          {{ loading ? "Signing in…" : "Sign in" }}
+          {{ loading ? t.signing_in : t.sign_in }}
         </button>
 
-        <p v-if="error" class="text-sm text-red-300 mt-2">
-          {{ error }}
+        <p v-if="errorMsg" class="text-sm text-red-300 mt-2">
+          {{ errorMsg }}
         </p>
       </form>
     </div>
@@ -49,28 +48,48 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { useT } from "../lib/i18n";
 
 const router = useRouter();
 
-const email = ref("");
+const username = ref("");
 const password = ref("");
 const loading = ref(false);
-const error = ref("");
+const errorMsg = ref("");
+
+const t = useT();
 
 const login = async () => {
   loading.value = true;
-  error.value = "";
+  errorMsg.value = "";
 
-  const { error: e } = await supabase.auth.signInWithPassword({
-    email: email.value,
-    password: password.value,
-  });
+  try {
+    const input = username.value.trim();
+    let email = input;
 
-  loading.value = false;
+    if (!input.includes("@")) {
+      const { data, error } = await supabase.functions.invoke("username-email", {
+        body: { username: input },
+      });
 
-  if (e) {
-    error.value = e.message;
+      if (error || !data?.email) {
+        throw new Error("Invalid username or password");
+      }
+
+      email = data.email;
+    }
+
+    const res = await supabase.auth.signInWithPassword({
+      email,
+      password: password.value,
+    });
+
+    if (res.error) throw res.error;
+  } catch (e) {
+    errorMsg.value = "Invalid username or password";
     return;
+  } finally {
+    loading.value = false;
   }
 
   router.push("/dashboard");

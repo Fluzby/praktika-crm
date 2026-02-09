@@ -14,13 +14,15 @@ serve(async (req) => {
   }
 
   try {
-    const { client_id, force } = await req.json();
+    const { client_id, force, top_n } = await req.json();
     if (!client_id) {
       return new Response(JSON.stringify({ error: "Missing client_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const requestedTop = Number(top_n);
+    const topN = [3, 5, 10].includes(requestedTop) ? requestedTop : 5;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -40,7 +42,7 @@ serve(async (req) => {
         const oneDay = 24 * 60 * 60 * 1000;
 
         if (ageMs < oneDay) {
-          return new Response(JSON.stringify(cached.results), {
+          return new Response(JSON.stringify(cached.results.slice(0, topN)), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -56,6 +58,15 @@ serve(async (req) => {
       .single();
 
     if (cErr || !client) throw cErr;
+
+    // Load rejected house IDs for this client
+    const { data: rejected } = await supabase
+      .from("house_matches")
+      .select("house_id")
+      .eq("client_id", client_id)
+      .eq("status", "rejected");
+
+    const rejectedIds = new Set((rejected || []).map((r) => r.house_id));
 
     // 2️⃣ Load candidate houses
     let q = supabase
@@ -75,9 +86,27 @@ serve(async (req) => {
       });
     }
 
+    const filteredHouses = (houses || []).filter((h) => !rejectedIds.has(h.id));
+    if (filteredHouses.length === 0) {
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 3️⃣ Build AI prompt
     const prompt = `
 You are a real estate assistant.
+
+LANGUAGE RULE:
+- Client notes may be written in different languages (e.g. Estonian or English).
+- Detect the language of the client notes.
+- Write the "reason" in the SAME language as the client notes.
+- Do NOT translate unless explicitly asked.
+
+IMPORTANT RULE:
+Some houses have already been rejected by this client.
+Those houses MUST NOT be suggested again.
+If a house is not listed below, assume it is allowed.
 
 Client notes:
 ${client.notes || "No notes"}
@@ -90,7 +119,7 @@ Client preferences:
 - Preferred tags: ${(client.preferred_tags || []).join(", ") || "any"}
 
 Houses:
-${houses
+${filteredHouses
   .map(
     (h, i) => `
 ${i + 1}) id=${h.id}
@@ -109,14 +138,15 @@ Rank the houses from best to worst for this client.
 Return ONLY valid JSON in this exact format:
 {
   "results": [
-    { "house_id": "uuid", "reason": "short explanation" }
+    { "house_id": "uuid", "reason": "short explanation", "confidence": 0 }
   ]
 }
 IMPORTANT:
 - house_id MUST be copied exactly from the "id=" field of a house above.
 - house_id MUST be a UUID string (contains letters a-f and dashes).
 - NEVER return price, rooms, address, or any other value as house_id.
-- Return at most 5 results.
+- confidence is an integer 0–100 (100 = perfect match, 0 = terrible match).
+- Return at most ${topN} results.
 `;
 
     // 4️⃣ Call OpenAI
@@ -136,9 +166,22 @@ IMPORTANT:
     const raw = parsed.results || [];
     const isUuid = (s: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+    const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
     const valid = raw
-      .filter((r: any) => r && typeof r.house_id === "string" && isUuid(r.house_id))
-      .slice(0, 5);
+      .filter(
+        (r: any) =>
+          r &&
+          typeof r.house_id === "string" &&
+          isUuid(r.house_id) &&
+          !rejectedIds.has(r.house_id)
+      )
+      .map((r: any) => ({
+        house_id: r.house_id,
+        reason: typeof r.reason === "string" ? r.reason.slice(0, 200) : "",
+        confidence: clamp(Number(r.confidence ?? 0)),
+      }))
+      .slice(0, topN);
 
     await supabase.from("ai_match_cache").upsert(
       {

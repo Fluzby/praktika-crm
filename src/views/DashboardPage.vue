@@ -3,16 +3,16 @@
     <!-- Header -->
     <div class="flex items-end justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p class="text-white/60 mt-1">Quick overview of your CRM</p>
+        <h1 class="text-3xl font-bold tracking-tight">{{ t.dashboard }}</h1>
+        <p class="text-white/60 mt-1">{{ t.dashboard_subtitle }}</p>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap justify-end">
-        <button class="btn" @click="showAddHouse = true">+ House</button>
-        <button class="btn-ghost" @click="showAddClient = true">+ Client</button>
-        <RouterLink to="/houses" class="btn-ghost">View houses</RouterLink>
-        <RouterLink to="/clients" class="btn-ghost">View clients</RouterLink>
-        <button class="btn-ghost" @click="load" :disabled="loading">Refresh</button>
+        <button class="btn" @click="showAddHouse = true">+ {{ t.houses }}</button>
+        <button class="btn-ghost" @click="showAddClient = true">+ {{ t.clients }}</button>
+        <RouterLink to="/houses" class="btn-ghost">{{ t.open }} {{ t.houses }}</RouterLink>
+        <RouterLink to="/clients" class="btn-ghost">{{ t.open }} {{ t.clients }}</RouterLink>
+        <button class="btn-ghost" @click="load" :disabled="loading">{{ t.refresh }}</button>
       </div>
     </div>
 
@@ -21,11 +21,11 @@
       <!-- LEFT: main column -->
       <section class="col-span-12 lg:col-span-8 space-y-6">
         <!-- Stats row -->
-        <div class="glass p-6">
+        <div v-if="settings.dashboardWidgets.overview" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm text-white/60">Overview</div>
-              <div class="text-lg font-semibold mt-1">Today</div>
+              <div class="text-sm text-white/60">{{ t.overview }}</div>
+              <div class="text-lg font-semibold mt-1">{{ t.today }}</div>
             </div>
 
             <div class="text-xs text-white/50" v-if="error">{{ error }}</div>
@@ -33,44 +33,77 @@
 
           <div class="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">Clients</div>
+              <div class="text-xs text-white/60">{{ t.clients }}</div>
               <div class="text-2xl font-semibold mt-1">{{ clientsCount ?? "—" }}</div>
-              <div class="text-xs text-white/45 mt-1">Total</div>
+              <div class="text-xs text-white/45 mt-1">{{ t.total }}</div>
             </div>
 
             <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">Houses</div>
+              <div class="text-xs text-white/60">{{ t.houses }}</div>
               <div class="text-2xl font-semibold mt-1">{{ housesCount ?? "—" }}</div>
-              <div class="text-xs text-white/45 mt-1">Total</div>
+              <div class="text-xs text-white/45 mt-1">{{ t.total }}</div>
             </div>
 
             <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">Photos</div>
+              <div class="text-xs text-white/60">{{ t.photos }}</div>
               <div class="text-2xl font-semibold mt-1">{{ photosCount ?? "—" }}</div>
-              <div class="text-xs text-white/45 mt-1">Stored</div>
+              <div class="text-xs text-white/45 mt-1">{{ t.stored }}</div>
             </div>
 
             <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">Last update</div>
+              <div class="text-xs text-white/60">{{ t.last_update }}</div>
               <div class="text-2xl font-semibold mt-1">{{ lastUpdated }}</div>
-              <div class="text-xs text-white/45 mt-1">Local</div>
+              <div class="text-xs text-white/45 mt-1">{{ t.local }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="settings.dashboardWidgets.kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-soft p-4">
+            <div class="text-xs text-white/60">{{ t.active_clients }}</div>
+            <div class="text-2xl font-semibold mt-1">
+              {{ clientsWithMatches }}
+            </div>
+          </div>
+
+          <div class="glass-soft p-4">
+            <div class="text-xs text-white/60">{{ t.matches }}</div>
+            <div class="text-sm mt-2 space-y-1">
+              <div>{{ t.suggested }}: {{ matchStats.suggested }}</div>
+              <div>{{ t.contacted }}: {{ matchStats.contacted }}</div>
+              <div>{{ t.viewed }}: {{ matchStats.viewed }}</div>
+              <div>{{ t.interested }}: {{ matchStats.interested }}</div>
+            </div>
+          </div>
+
+          <div class="glass-soft p-4">
+            <div class="text-xs text-white/60">{{ t.cold_houses }}</div>
+            <div class="text-2xl font-semibold mt-1">
+              {{ housesNoInterest }}
+            </div>
+          </div>
+
+          <div class="glass-soft p-4">
+            <div class="text-xs text-white/60">{{ t.ai_efficiency }}</div>
+            <div class="text-sm mt-2">
+              {{ aiEfficiency.contacted }} / {{ aiEfficiency.suggested }} {{ t.contacted_over_suggested }}
             </div>
           </div>
         </div>
 
         <!-- Latest listings -->
-        <div class="glass p-6">
+        <div v-if="settings.dashboardWidgets.latest_listings" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-semibold">Latest listings</h2>
-              <p class="text-sm text-white/60 mt-1">Recently added houses</p>
+              <h2 class="text-lg font-semibold">{{ t.latest_listings }}</h2>
+              <p class="text-sm text-white/60 mt-1">{{ t.recent_houses_subtitle }}</p>
             </div>
             <RouterLink to="/houses" class="text-sm text-white/60 hover:text-white">
-              Open →
+              {{ t.open }} →
             </RouterLink>
           </div>
 
-          <div v-if="loading" class="mt-5 text-white/60">Loading…</div>
+          <div v-if="loading" class="mt-5 text-white/60">{{ t.loading }}</div>
 
           <ul v-else class="mt-5 space-y-2">
             <li
@@ -93,7 +126,7 @@
             </li>
 
             <li v-if="recentHouses.length === 0" class="text-white/60">
-              No houses yet.
+              {{ t.no_houses_found }}
             </li>
           </ul>
         </div>
@@ -102,18 +135,18 @@
       <!-- RIGHT: secondary column -->
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <!-- Recent clients -->
-        <div class="glass p-6">
+        <div v-if="settings.dashboardWidgets.recent_clients" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-semibold">Recent clients</h2>
-              <p class="text-sm text-white/60 mt-1">Latest contacts</p>
+              <h2 class="text-lg font-semibold">{{ t.recent_clients }}</h2>
+              <p class="text-sm text-white/60 mt-1">{{ t.recent_clients_subtitle }}</p>
             </div>
             <RouterLink to="/clients" class="text-sm text-white/60 hover:text-white">
-              Open →
+              {{ t.open }} →
             </RouterLink>
           </div>
 
-          <div v-if="loading" class="mt-5 text-white/60">Loading…</div>
+          <div v-if="loading" class="mt-5 text-white/60">{{ t.loading }}</div>
 
           <ul v-else class="mt-5 space-y-2">
             <li
@@ -128,13 +161,13 @@
             </li>
 
             <li v-if="recentClients.length === 0" class="text-white/60">
-              No clients yet.
+              {{ t.no_clients_found }}
             </li>
           </ul>
         </div>
 
-        <div class="glass-soft p-6">
-          <h2 class="font-semibold mb-3">Recent activity</h2>
+        <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
+          <h2 class="font-semibold mb-3">{{ t.recent_activity }}</h2>
           <ul class="space-y-2 text-sm text-white/60">
             <li v-for="a in activity" :key="a.id" class="flex items-center justify-between gap-3">
               <span class="truncate">
@@ -144,7 +177,7 @@
                 {{ new Date(a.created_at).toLocaleDateString() }}
               </span>
             </li>
-            <li v-if="activity.length===0">No recent activity.</li>
+            <li v-if="activity.length===0">{{ t.no_recent_activity }}</li>
           </ul>
         </div>
       </aside>
@@ -153,48 +186,48 @@
     <!-- Add House modal -->
     <Modal
       :open="showAddHouse"
-      title="Add house"
-      subtitle="Add details and upload photos (1–10)"
+      :title="t.add_house"
+      :subtitle="t.add_house_subtitle"
       @close="showAddHouse = false"
     >
       <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createHouseAndClose">
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Address *</label>
+          <label class="text-sm text-white/60">{{ t.address }} *</label>
           <input class="input mt-1" v-model.trim="houseForm.address" required />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">City</label>
+          <label class="text-sm text-white/60">{{ t.city }}</label>
           <input class="input mt-1" v-model.trim="houseForm.city" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Price (€)</label>
+          <label class="text-sm text-white/60">{{ t.price }}</label>
           <input class="input mt-1" type="number" min="0" v-model.number="houseForm.price" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Rooms</label>
+          <label class="text-sm text-white/60">{{ t.rooms }}</label>
           <input class="input mt-1" type="number" min="0" v-model.number="houseForm.rooms" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Size (m²)</label>
+          <label class="text-sm text-white/60">{{ t.size_m2 }}</label>
           <input class="input mt-1" type="number" min="0" v-model.number="houseForm.size_m2" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Tags (comma separated)</label>
-          <input class="input mt-1" v-model.trim="houseTagsInput" placeholder="garden, garage, renovated" />
+          <label class="text-sm text-white/60">{{ t.tags }}</label>
+          <input class="input mt-1" v-model.trim="houseTagsInput" :placeholder="t.tags_placeholder" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Description</label>
+          <label class="text-sm text-white/60">{{ t.description }}</label>
           <textarea class="textarea mt-1" rows="4" v-model.trim="houseForm.description"></textarea>
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Photos (1–10)</label>
+          <label class="text-sm text-white/60">{{ t.photos }} (1–10)</label>
           <input
             type="file"
             accept="image/*"
@@ -203,18 +236,18 @@
             class="mt-2 block w-full text-sm text-white/70"
           />
           <p class="text-xs text-white/50 mt-1" v-if="houseFiles.length">
-            Selected: {{ houseFiles.length }} file(s)
+            {{ t.selected_files }}: {{ houseFiles.length }} {{ t.files }}
           </p>
         </div>
 
         <div class="md:col-span-2 flex items-center gap-3 mt-2">
           <button class="btn" :disabled="creatingHouse">
-            {{ creatingHouse ? "Saving..." : "Save house" }}
+            {{ creatingHouse ? t.saving : t.save }}
           </button>
-          <button type="button" class="btn-ghost" @click="showAddHouse = false">Cancel</button>
+          <button type="button" class="btn-ghost" @click="showAddHouse = false">{{ t.cancel }}</button>
 
           <p v-if="createHouseError" class="text-sm text-red-300">{{ createHouseError }}</p>
-          <p v-if="createHouseOk" class="text-sm text-green-300">Saved ✅</p>
+          <p v-if="createHouseOk" class="text-sm text-green-300">{{ t.saved }}</p>
         </div>
       </form>
     </Modal>
@@ -222,39 +255,39 @@
     <!-- Add Client modal -->
     <Modal
       :open="showAddClient"
-      title="Add client"
-      subtitle="Contact details and internal notes"
+      :title="t.add_client"
+      :subtitle="t.add_client_subtitle"
       @close="showAddClient = false"
     >
       <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createClientAndClose">
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Full name *</label>
+          <label class="text-sm text-white/60">{{ t.full_name }} *</label>
           <input class="input mt-1" v-model.trim="clientForm.full_name" required />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Phone</label>
+          <label class="text-sm text-white/60">{{ t.phone }}</label>
           <input class="input mt-1" v-model.trim="clientForm.phone" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Email</label>
+          <label class="text-sm text-white/60">{{ t.email }}</label>
           <input class="input mt-1" type="email" v-model.trim="clientForm.email" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Notes</label>
+          <label class="text-sm text-white/60">{{ t.notes }}</label>
           <textarea class="textarea mt-1" rows="4" v-model.trim="clientForm.notes"></textarea>
         </div>
 
         <div class="md:col-span-2 flex items-center gap-3 mt-2">
           <button class="btn" :disabled="creatingClient">
-            {{ creatingClient ? "Saving..." : "Save client" }}
+            {{ creatingClient ? t.saving : t.save }}
           </button>
-          <button type="button" class="btn-ghost" @click="showAddClient = false">Cancel</button>
+          <button type="button" class="btn-ghost" @click="showAddClient = false">{{ t.cancel }}</button>
 
           <p v-if="createClientError" class="text-sm text-red-300">{{ createClientError }}</p>
-          <p v-if="createClientOk" class="text-sm text-green-300">Saved ✅</p>
+          <p v-if="createClientOk" class="text-sm text-green-300">{{ t.saved }}</p>
         </div>
       </form>
     </Modal>
@@ -262,11 +295,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { RouterLink } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
+import { useT } from "../lib/i18n";
+import { settings } from "../lib/settings";
 
 const clientsCount = ref(null);
 const housesCount = ref(null);
@@ -275,6 +310,16 @@ const photosCount = ref(null);
 const recentClients = ref([]);
 const recentHouses = ref([]);
 const activity = ref([]);
+
+const clientsWithMatches = ref(0);
+const matchStats = ref({
+  suggested: 0,
+  contacted: 0,
+  viewed: 0,
+  interested: 0,
+});
+const housesNoInterest = ref(0);
+const aiEfficiency = ref({ suggested: 0, contacted: 0 });
 
 const loading = ref(false);
 const error = ref("");
@@ -312,6 +357,8 @@ const clientForm = ref({
   notes: "",
 });
 
+const t = useT();
+
 const formatDate = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -329,6 +376,54 @@ const parseTags = (s) =>
     .filter(Boolean);
 
 const randomId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+
+const loadClientsWithMatches = async () => {
+  const { data, error: e } = await supabase
+    .from("house_matches")
+    .select("client_id")
+    .neq("status", "rejected");
+
+  if (!e) clientsWithMatches.value = new Set((data || []).map((d) => d.client_id)).size;
+};
+
+const loadMatchStats = async () => {
+  const { data, error: e } = await supabase.from("house_matches").select("status");
+  if (e) return;
+
+  const counts = { suggested: 0, contacted: 0, viewed: 0, interested: 0 };
+  (data || []).forEach((m) => {
+    if (counts[m.status] != null) counts[m.status]++;
+  });
+
+  matchStats.value = counts;
+};
+
+const loadHousesNoInterest = async () => {
+  const { data, error: e } = await supabase.from("houses").select("id");
+  if (e) return;
+
+  const houseIds = (data || []).map((h) => h.id);
+
+  const { data: interested } = await supabase
+    .from("house_matches")
+    .select("house_id")
+    .eq("status", "interested");
+
+  const interestedSet = new Set((interested || []).map((i) => i.house_id));
+  housesNoInterest.value = houseIds.filter((id) => !interestedSet.has(id)).length;
+};
+
+const loadAiEfficiency = async () => {
+  const { data, error: e } = await supabase
+    .from("house_matches")
+    .select("status")
+    .eq("source", "ai");
+
+  if (e) return;
+
+  aiEfficiency.value.suggested = (data || []).length;
+  aiEfficiency.value.contacted = (data || []).filter((m) => m.status === "contacted").length;
+};
 
 const load = async () => {
   loading.value = true;
@@ -371,6 +466,11 @@ const load = async () => {
     recentClients.value = cRecent.data || [];
     recentHouses.value = hRecent.data || [];
     activity.value = a.data || [];
+
+    await loadClientsWithMatches();
+    await loadMatchStats();
+    await loadHousesNoInterest();
+    await loadAiEfficiency();
 
     lastUpdated.value = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
@@ -482,5 +582,15 @@ const createClientAndClose = async () => {
   if (!createClientError.value) showAddClient.value = false;
 };
 
-onMounted(load);
+onMounted(() => {
+  load();
+  const handler = () => {
+    loadClientsWithMatches();
+    loadMatchStats();
+    loadHousesNoInterest();
+    loadAiEfficiency();
+  };
+  window.addEventListener("match-changed", handler);
+  onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
+});
 </script>

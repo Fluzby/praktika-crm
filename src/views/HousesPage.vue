@@ -3,13 +3,13 @@
     <!-- Header -->
     <div class="flex items-end justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Houses</h1>
-        <p class="text-white/60 mt-1">Listings and photos</p>
+        <h1 class="text-3xl font-bold tracking-tight">{{ t.houses }}</h1>
+        <p class="text-white/60 mt-1">{{ t.houses_subtitle }}</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <button class="btn-ghost" @click="load" :disabled="loading">Refresh</button>
-        <button class="btn" @click="showAdd = true">+ Add</button>
+        <button class="btn-ghost" @click="load" :disabled="loading">{{ t.refresh }}</button>
+        <button class="btn" @click="showAdd = true">+ {{ t.add }}</button>
       </div>
     </div>
 
@@ -19,15 +19,15 @@
         <div class="flex-1">
           <input
             class="input"
-            placeholder="Search by address, city, tags…"
+            :placeholder="t.search_houses_placeholder"
             v-model.trim="q"
           />
         </div>
 
         <div class="flex items-center gap-2">
-          <button class="btn-ghost" @click="q = ''" :disabled="!q">Clear</button>
+          <button class="btn-ghost" @click="q = ''" :disabled="!q">{{ t.clear }}</button>
           <div class="text-sm text-white/50">
-            {{ filtered.length }} result(s)
+            {{ filtered.length }} {{ t.results }}
           </div>
         </div>
       </div>
@@ -35,7 +35,7 @@
 
     <!-- List -->
     <div class="space-y-3">
-      <div v-if="loading" class="text-white/60">Loading…</div>
+      <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
 
       <ul v-else class="space-y-3">
@@ -52,10 +52,10 @@
                 v-if="coverUrls[h.id]"
                 :src="coverUrls[h.id]"
                 class="w-full h-full object-cover"
-                alt="House"
+                :alt="t.house"
               />
               <div v-else class="w-full h-full grid place-items-center text-white/30 text-sm">
-                no photo
+                {{ t.no_photo }}
               </div>
             </div>
 
@@ -69,7 +69,7 @@
                   <div class="text-sm text-white/60 mt-1">
                     {{ h.city || "—" }}
                     <span class="mx-2 text-white/30">•</span>
-                    {{ h.rooms ?? "?" }} rooms
+                    {{ h.rooms ?? "?" }} {{ t.rooms }}
                     <span class="mx-2 text-white/30">•</span>
                     €{{ h.price ?? "—" }}
                     <span v-if="h.size_m2" class="mx-2 text-white/30">•</span>
@@ -93,7 +93,7 @@
         </li>
 
         <li v-if="filtered.length === 0" class="text-white/60">
-          No houses found.
+          {{ t.no_houses_found }}
         </li>
       </ul>
     </div>
@@ -101,48 +101,48 @@
     <!-- Add modal -->
     <Modal
       :open="showAdd"
-      title="Add house"
-      subtitle="Add details and upload photos (1–10)"
+      :title="t.add_house"
+      :subtitle="t.add_house_subtitle"
       @close="showAdd = false"
     >
       <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createHouseAndClose">
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Address *</label>
+          <label class="text-sm text-white/60">{{ t.address }} *</label>
           <input class="input mt-1" v-model.trim="form.address" required />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">City</label>
+          <label class="text-sm text-white/60">{{ t.city }}</label>
           <input class="input mt-1" v-model.trim="form.city" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Price (€)</label>
+          <label class="text-sm text-white/60">{{ t.price }}</label>
           <input class="input mt-1" type="number" min="0" v-model.number="form.price" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Rooms</label>
+          <label class="text-sm text-white/60">{{ t.rooms }}</label>
           <input class="input mt-1" type="number" min="0" v-model.number="form.rooms" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Size (m²)</label>
+          <label class="text-sm text-white/60">{{ t.size_m2 }}</label>
           <input class="input mt-1" type="number" min="0" v-model.number="form.size_m2" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Tags (comma separated)</label>
-          <input class="input mt-1" v-model.trim="tagsInput" placeholder="garden, garage, renovated" />
+          <label class="text-sm text-white/60">{{ t.tags }}</label>
+          <input class="input mt-1" v-model.trim="tagsInput" :placeholder="t.tags_placeholder" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Description</label>
+          <label class="text-sm text-white/60">{{ t.description }}</label>
           <textarea class="textarea mt-1" rows="4" v-model.trim="form.description"></textarea>
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Photos (1–10)</label>
+          <label class="text-sm text-white/60">{{ t.photos }} (1–10)</label>
           <input
             type="file"
             accept="image/*"
@@ -151,18 +151,18 @@
             class="mt-2 block w-full text-sm text-white/70"
           />
           <p class="text-xs text-white/50 mt-1" v-if="selectedFiles.length">
-            Selected: {{ selectedFiles.length }} file(s)
+            {{ t.selected_files }}: {{ selectedFiles.length }} {{ t.files }}
           </p>
         </div>
 
         <div class="md:col-span-2 flex items-center gap-3 mt-2">
           <button class="btn" :disabled="creating">
-            {{ creating ? "Saving..." : "Save house" }}
+            {{ creating ? t.saving : t.save }}
           </button>
-          <button type="button" class="btn-ghost" @click="showAdd = false">Cancel</button>
+          <button type="button" class="btn-ghost" @click="showAdd = false">{{ t.cancel }}</button>
 
           <p v-if="createError" class="text-sm text-red-300">{{ createError }}</p>
-          <p v-if="createOk" class="text-sm text-green-300">Saved ✅</p>
+          <p v-if="createOk" class="text-sm text-green-300">{{ t.saved }}</p>
         </div>
       </form>
     </Modal>
@@ -175,6 +175,7 @@ import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
+import { useT } from "../lib/i18n";
 
 const router = useRouter();
 
@@ -203,6 +204,8 @@ const form = ref({
 
 const tagsInput = ref("");
 const selectedFiles = ref([]);
+
+const t = useT();
 
 const onFilesChange = (e) => {
   selectedFiles.value = Array.from(e.target.files || []).slice(0, 10);

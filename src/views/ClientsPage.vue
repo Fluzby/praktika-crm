@@ -3,13 +3,13 @@
     <!-- Header -->
     <div class="flex items-end justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Clients</h1>
-        <p class="text-white/60 mt-1">Contacts and internal notes</p>
+        <h1 class="text-3xl font-bold tracking-tight">{{ t.clients }}</h1>
+        <p class="text-white/60 mt-1">{{ t.clients_subtitle }}</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <button class="btn-ghost" @click="load" :disabled="loading">Refresh</button>
-        <button class="btn" @click="showAdd = true">+ Add</button>
+        <button class="btn-ghost" @click="load" :disabled="loading">{{ t.refresh }}</button>
+        <button class="btn" @click="showAdd = true">+ {{ t.add }}</button>
       </div>
     </div>
 
@@ -19,15 +19,15 @@
         <div class="flex-1">
           <input
             class="input"
-            placeholder="Search name, phone, email, notes…"
+            :placeholder="t.search_clients_placeholder"
             v-model.trim="q"
           />
         </div>
 
         <div class="flex items-center gap-2">
-          <button class="btn-ghost" @click="q = ''" :disabled="!q">Clear</button>
+          <button class="btn-ghost" @click="q = ''" :disabled="!q">{{ t.clear }}</button>
           <div class="text-sm text-white/50">
-            {{ filtered.length }} result(s)
+            {{ filtered.length }} {{ t.results }}
           </div>
         </div>
       </div>
@@ -35,7 +35,7 @@
 
     <!-- List -->
     <div class="space-y-3">
-      <div v-if="loading" class="text-white/60">Loading…</div>
+      <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
 
       <ul v-else class="space-y-3">
@@ -74,7 +74,7 @@
         </li>
 
         <li v-if="filtered.length === 0" class="text-white/60">
-          No clients found.
+          {{ t.no_clients_found }}
         </li>
       </ul>
     </div>
@@ -82,46 +82,46 @@
     <!-- Add modal -->
     <Modal
       :open="showAdd"
-      title="Add client"
-      subtitle="Contact details and internal notes"
+      :title="t.add_client"
+      :subtitle="t.add_client_subtitle"
       @close="showAdd = false"
     >
       <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createClientAndClose">
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Full name *</label>
+          <label class="text-sm text-white/60">{{ t.full_name }} *</label>
           <input class="input mt-1" v-model.trim="form.full_name" required />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Phone</label>
+          <label class="text-sm text-white/60">{{ t.phone }}</label>
           <input class="input mt-1" v-model.trim="form.phone" />
         </div>
 
         <div>
-          <label class="text-sm text-white/60">Email</label>
+          <label class="text-sm text-white/60">{{ t.email }}</label>
           <input class="input mt-1" type="email" v-model.trim="form.email" />
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-sm text-white/60">Notes</label>
+          <label class="text-sm text-white/60">{{ t.notes }}</label>
           <textarea
             class="textarea mt-1"
             rows="4"
             v-model.trim="form.notes"
-            placeholder="Internal notes (preferences, behavior, reminders…)"
+            :placeholder="t.notes_placeholder"
           ></textarea>
         </div>
 
         <div class="md:col-span-2 flex items-center gap-3 mt-2">
           <button class="btn" :disabled="creating">
-            {{ creating ? "Saving..." : "Save client" }}
+            {{ creating ? t.saving : t.save }}
           </button>
           <button type="button" class="btn-ghost" @click="showAdd = false">
-            Cancel
+            {{ t.cancel }}
           </button>
 
           <p v-if="createError" class="text-sm text-red-300">{{ createError }}</p>
-          <p v-if="createOk" class="text-sm text-green-300">Saved ✅</p>
+          <p v-if="createOk" class="text-sm text-green-300">{{ t.saved }}</p>
         </div>
       </form>
     </Modal>
@@ -134,6 +134,7 @@ import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
+import { useT } from "../lib/i18n";
 
 const router = useRouter();
 
@@ -154,6 +155,8 @@ const form = ref({
   email: "",
   notes: "",
 });
+
+const t = useT();
 
 const formatDate = (iso) => {
   if (!iso) return "—";

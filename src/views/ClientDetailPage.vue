@@ -7,18 +7,18 @@
           {{ client.full_name }}
         </h1>
         <p class="text-sm text-white/60 mt-1">
-          Client record
+          {{ t.client_record }}
         </p>
       </div>
 
       <div class="flex items-center gap-2">
-        <button class="btn-ghost" @click="load">Refresh</button>
-        <button class="btn-ghost" @click="openMatches">Match houses</button>
+        <button class="btn-ghost" @click="load">{{ t.refresh }}</button>
+        <button class="btn-ghost" @click="openMatches">{{ t.match_houses }}</button>
         <button
           class="px-4 py-2 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10"
           @click="remove"
         >
-          Delete
+          {{ t.delete }}
         </button>
       </div>
     </div>
@@ -30,35 +30,35 @@
         <!-- Details -->
         <div class="glass p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-4">
-            Details
+            {{ t.details }}
           </h2>
 
           <form class="grid gap-4 md:grid-cols-2" @submit.prevent="save">
             <div class="md:col-span-2">
-              <label class="text-sm text-white/60">Full name *</label>
+              <label class="text-sm text-white/60">{{ t.full_name }} *</label>
               <input class="input mt-1" v-model.trim="edit.full_name" required />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Phone</label>
+              <label class="text-sm text-white/60">{{ t.phone }}</label>
               <input class="input mt-1" v-model.trim="edit.phone" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Email</label>
+              <label class="text-sm text-white/60">{{ t.email }}</label>
               <input class="input mt-1" type="email" v-model.trim="edit.email" />
             </div>
 
             <div class="md:col-span-2 flex items-center gap-3 mt-2">
               <button class="btn" :disabled="saving">
-                {{ saving ? "Saving…" : "Save changes" }}
+                {{ saving ? t.saving : t.save_changes }}
               </button>
 
               <span
                 v-if="ok"
                 class="text-xs text-emerald-400"
               >
-                Changes saved
+                {{ t.changes_saved }}
               </span>
 
               <span
@@ -74,44 +74,98 @@
         <!-- Notes -->
         <div class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
-            Notes
+            {{ t.notes }}
           </h2>
 
           <textarea
             class="textarea"
             rows="5"
             v-model.trim="edit.notes"
-            placeholder="Internal notes, preferences, reminders…"
+            :placeholder="t.notes_placeholder"
           />
         </div>
 
+        <div class="glass-soft p-4 mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-semibold">{{ t.matched_houses }}</div>
+
+            <label class="text-xs text-white/60 flex items-center gap-2">
+              <input type="checkbox" v-model="hideRejected" />
+              {{ t.hide_rejected }}
+            </label>
+          </div>
+
+          <div v-if="matchedLoading" class="text-white/60 text-sm">{{ t.loading }}</div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="m in (hideRejected ? matched.filter(x => x.status !== 'rejected') : matched)"
+              :key="m.house.id"
+              class="rounded-xl border border-white/10 p-3 hover:bg-white/[0.03] transition"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 cursor-pointer" @click="$router.push(`/houses/${m.house.id}`)">
+                  <div class="font-medium truncate">{{ m.house.address }}</div>
+                  <div class="text-xs text-white/60 mt-1">
+                    {{ m.house.city || "—" }} • {{ m.house.rooms ?? "?" }} {{ t.rooms }} • €{{ m.house.price ?? "—" }}
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="m.ai_confidence != null"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                  >
+                    {{ m.ai_confidence }}%
+                  </span>
+
+                  <span class="text-xs px-2 py-0.5 rounded-full" :class="statusPill(m.status)">
+                    {{ statusLabel(m.status) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2 mt-3">
+                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'contacted')">{{ t.contacted }}</button>
+                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'viewed')">{{ t.viewed }}</button>
+                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'interested')">{{ t.interested }}</button>
+                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'rejected')">{{ t.rejected }}</button>
+              </div>
+            </div>
+
+            <div v-if="matched.length === 0" class="text-white/60 text-sm">
+              {{ t.no_matched_houses }}
+            </div>
+          </div>
+        </div>
+
         <div class="glass-soft p-6">
-          <h2 class="text-sm font-semibold text-white/80 mb-3">Matching preferences</h2>
+          <h2 class="text-sm font-semibold text-white/80 mb-3">{{ t.matching_preferences }}</h2>
 
           <div class="grid gap-3 md:grid-cols-2">
             <div>
-              <label class="text-sm text-white/60">Min price (€)</label>
+              <label class="text-sm text-white/60">{{ t.min_price }}</label>
               <input class="input mt-1" type="number" v-model.number="edit.min_price" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Max price (€)</label>
+              <label class="text-sm text-white/60">{{ t.max_price }}</label>
               <input class="input mt-1" type="number" v-model.number="edit.max_price" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Min rooms</label>
+              <label class="text-sm text-white/60">{{ t.min_rooms }}</label>
               <input class="input mt-1" type="number" v-model.number="edit.min_rooms" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Max rooms</label>
+              <label class="text-sm text-white/60">{{ t.max_rooms }}</label>
               <input class="input mt-1" type="number" v-model.number="edit.max_rooms" />
             </div>
 
             <div class="md:col-span-2">
-              <label class="text-sm text-white/60">Preferred tags</label>
-              <input class="input mt-1" placeholder="garden, garage, modern"
+              <label class="text-sm text-white/60">{{ t.preferred_tags }}</label>
+              <input class="input mt-1" :placeholder="t.tags_placeholder"
                      v-model.trim="edit.preferred_tags_input" />
             </div>
           </div>
@@ -122,18 +176,18 @@
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <div class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
-            Metadata
+            {{ t.metadata }}
           </h2>
 
           <div class="text-sm text-white/60 space-y-1">
             <div>
-              Created:
+              {{ t.created }}:
               <span class="text-white/80">
                 {{ formatDate(client.created_at) }}
               </span>
             </div>
             <div>
-              Updated:
+              {{ t.updated }}:
               <span class="text-white/80">
                 {{ formatDate(client.updated_at) }}
               </span>
@@ -143,7 +197,7 @@
       </aside>
     </div>
 
-    <Modal :open="showMatches" title="Top AI Matches" @close="showMatches=false">
+    <Modal :open="showMatches" :title="t.top_ai_matches" @close="showMatches=false">
       <div class="flex flex-col gap-3">
         <div v-if="matchesLoading" class="space-y-2">
           <div class="glass-soft h-16 animate-pulse"></div>
@@ -160,26 +214,44 @@
           class="glass-soft rounded-xl p-3 max-h-[420px] overflow-y-auto space-y-2"
         >
           <div
-            v-for="h in aiHouseCards"
+            v-for="(h, i) in aiHouseCards"
             :key="h.id"
-            class="rounded-lg border border-white/10 p-3 hover:bg-white/[0.04] cursor-pointer transition"
-            :class="h.rank === 1 ? 'ring-1 ring-amber-400/30' : ''"
+            class="rounded-lg cursor-pointer transition"
+            :class="[
+              'rounded-xl border p-4 transition',
+              selectedIndex === i
+                ? 'border-emerald-400/60 bg-emerald-400/5'
+                : 'border-white/10 hover:bg-white/[0.03]'
+            ]"
           >
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-2">
               <div class="font-medium truncate">
                 {{ h.address }}
               </div>
 
-              <span
-                v-if="h.rank <= 3"
-                class="text-xs px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-200"
-              >
-                ✨ Top {{ h.rank }}
-              </span>
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="h.rank <= 3"
+                  class="text-xs px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-200"
+                >
+                  ✨ {{ t.top }} {{ h.rank }}
+                </span>
+
+                <span
+                  class="text-xs px-2 py-0.5 rounded-full"
+                  :class="
+                    (h.confidence ?? 0) >= 80 ? 'bg-emerald-500/15 text-emerald-200'
+                    : (h.confidence ?? 0) >= 55 ? 'bg-amber-400/15 text-amber-200'
+                    : 'bg-white/10 text-white/70'
+                  "
+                >
+                  {{ h.confidence ?? 0 }}%
+                </span>
+              </div>
             </div>
 
             <div class="text-xs text-white/60 mt-1">
-              {{ h.city || "—" }} • {{ h.rooms ?? "?" }} rooms • €{{ h.price ?? "—" }}
+              {{ h.city || "—" }} • {{ h.rooms ?? "?" }} {{ t.rooms }} • €{{ h.price ?? "—" }}
             </div>
 
             <div
@@ -194,7 +266,7 @@
                 class="text-xs px-3 py-1 rounded-md bg-red-500/15 text-red-200 hover:bg-red-500/25"
                 @click.stop="rejectHouse(h)"
               >
-                Reject / Hide
+                {{ t.reject_hide }}
               </button>
 
               <button
@@ -205,40 +277,46 @@
                 :disabled="h._picked"
                 @click.stop="pickHouse(h)"
               >
-                {{ h._picked ? "Picked" : "Pick for client" }}
+                {{ h._picked ? t.picked : t.pick_for_client }}
               </button>
 
               <button
                 class="text-xs px-3 py-1 rounded-md bg-white/10 hover:bg-white/20"
                 @click.stop="$router.push(`/houses/${h.id}`)"
               >
-                View house
+                {{ t.view_house }}
               </button>
             </div>
           </div>
 
           <div v-if="!aiHouseCards.length" class="text-white/60 text-sm">
-            No good matches found.
+            {{ t.no_good_matches }}
           </div>
         </div>
       </div>
+      <div v-if="settings.shortcuts" class="text-xs text-white/40 mt-4 flex gap-4">
+        <span>⏎ {{ t.pick_shortcut }}</span>
+        <span>R {{ t.reject_shortcut }}</span>
+        <span>U {{ t.undo_shortcut }}</span>
+        <span>Esc {{ t.close_shortcut }}</span>
+      </div>
       <template #footer>
         <div class="flex items-center justify-between w-full">
-          <button class="btn-ghost" @click="openMatches(true)">Re-run AI</button>
+          <button class="btn-ghost" @click="openMatches(true)">{{ t.re_run_ai }}</button>
 
           <button
             class="btn-ghost"
             :disabled="!lastAction"
             @click="undoLast"
           >
-            Undo
+            {{ t.undo }}
           </button>
         </div>
       </template>
     </Modal>
   </div>
 
-  <div v-else class="text-white/60">Loading…</div>
+  <div v-else class="text-white/60">{{ t.loading }}</div>
 
   <div
     v-if="toastMsg"
@@ -254,11 +332,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { settings } from "../lib/settings";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
+import { useT } from "../lib/i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -275,10 +355,17 @@ const matchesLoading = ref(false);
 const matchesError = ref("");
 const aiHouseCards = ref([]);
 const lastAction = ref(null);
+const selectedIndex = ref(0);
+
+const matched = ref([]);
+const matchedLoading = ref(false);
+const hideRejected = ref(true);
 
 const toastMsg = ref("");
 const toastType = ref("info");
 let toastTimer = null;
+
+const t = useT();
 
 const toast = (msg, type = "info") => {
   toastMsg.value = msg;
@@ -292,6 +379,58 @@ const toast = (msg, type = "info") => {
 const formatDate = (iso) => {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString();
+};
+
+const loadMatched = async () => {
+  matchedLoading.value = true;
+  try {
+    const { data, error } = await supabase
+      .from("house_matches")
+      .select("status, source, ai_confidence, ai_reason, created_at, house:houses(id,address,city,price,rooms,tags)")
+      .eq("client_id", client.value.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    matched.value = (data || []).filter(m => m.house);
+  } catch (e) {
+    console.error("loadMatched error:", e);
+  } finally {
+    matchedLoading.value = false;
+  }
+};
+
+const statusPill = (s) => {
+  if (s === "interested") return "bg-emerald-500/15 text-emerald-200";
+  if (s === "viewed") return "bg-fuchsia-500/15 text-fuchsia-200";
+  if (s === "contacted") return "bg-sky-500/15 text-sky-200";
+  if (s === "rejected") return "bg-red-500/15 text-red-200";
+  return "bg-white/10 text-white/70";
+};
+
+const statusLabel = (s) => {
+  const map = {
+    suggested: t.value.suggested,
+    contacted: t.value.contacted,
+    viewed: t.value.viewed,
+    interested: t.value.interested,
+    rejected: t.value.rejected,
+  };
+  return map[s] || t.value.suggested;
+};
+
+const setMatchStatus = async (houseId, status) => {
+  const { error } = await supabase
+    .from("house_matches")
+    .update({ status })
+    .eq("client_id", client.value.id)
+    .eq("house_id", houseId);
+
+  if (error) {
+    console.error("setMatchStatus error:", error);
+    return;
+  }
+  await loadMatched();
 };
 
 const load = async () => {
@@ -322,10 +461,11 @@ const openMatches = async (force = false) => {
   matchesLoading.value = true;
   matchesError.value = "";
   aiHouseCards.value = [];
+  selectedIndex.value = 0;
 
   try {
     const { data, error } = await supabase.functions.invoke("smart-match", {
-      body: { client_id: client.value.id, force },
+      body: { client_id: client.value.id, force, top_n: settings.aiTopN },
     });
 
     if (error) throw error;
@@ -336,7 +476,9 @@ const openMatches = async (force = false) => {
     const isUuid = (s) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
     const ids = results.map(r => r.house_id).filter(isUuid);
-    const meta = new Map(results.map((r, i) => [r.house_id, { reason: r.reason, rank: i + 1 }]));
+    const meta = new Map(
+      results.map((r, i) => [r.house_id, { reason: r.reason, rank: i + 1, confidence: r.confidence ?? 0 }])
+    );
 
     const { data: houses, error: hErr } = await supabase
       .from("houses")
@@ -347,11 +489,25 @@ const openMatches = async (force = false) => {
 
     const byId = new Map((houses || []).map(h => [h.id, h]));
     aiHouseCards.value = ids
-      .slice(0, 5)
-      .map(id => byId.get(id) && ({ ...byId.get(id), ...meta.get(id) }))
+      .slice(0, settings.aiTopN ?? 5)
+      .map((id) => {
+        const h = byId.get(id);
+        const m = meta.get(id);
+        return h && m ? { ...h, reason: m.reason, rank: m.rank, confidence: m.confidence } : null;
+      })
       .filter(Boolean);
 
     aiHouseCards.value = aiHouseCards.value.filter(h => h.status !== "rejected");
+
+    const rejectedSet = new Set(
+      matched.value
+        .filter(m => m.status === "rejected")
+        .map(m => m.house.id)
+    );
+
+    aiHouseCards.value = aiHouseCards.value.filter(
+      h => !rejectedSet.has(h.id)
+    );
   } catch (e) {
     matchesError.value = e?.message || String(e);
   } finally {
@@ -368,6 +524,8 @@ const notifyMatchChanged = (clientId, houseId) => {
 };
 
 const pickHouse = async (h) => {
+  if (h._picked) return;
+
   try {
     lastAction.value = {
       type: "pick",
@@ -381,6 +539,8 @@ const pickHouse = async (h) => {
         house_id: h.id,
         source: "ai",
         status: "contacted",
+        ai_confidence: h.confidence ?? null,
+        ai_reason: h.reason ?? null,
       },
       { onConflict: "client_id,house_id" }
     );
@@ -390,7 +550,7 @@ const pickHouse = async (h) => {
     h._picked = true;
     h.status = "contacted";
 
-    toast("Picked for client ✅", "success");
+    toast(t.value.picked_for_client_toast, "success");
     notifyMatchChanged(client.value.id, h.id);
   } catch (e) {
     console.error("pickHouse error:", e);
@@ -399,6 +559,8 @@ const pickHouse = async (h) => {
 };
 
 const rejectHouse = async (h) => {
+  if (h._picked) return;
+
   try {
     lastAction.value = {
       type: "reject",
@@ -412,13 +574,15 @@ const rejectHouse = async (h) => {
         house_id: h.id,
         source: "ai",
         status: "rejected",
+        ai_confidence: h.confidence ?? null,
+        ai_reason: h.reason ?? null,
       },
       { onConflict: "client_id,house_id" }
     );
 
     if (error) throw error;
 
-    toast("Rejected (hidden) 🟥", "info");
+    toast(t.value.rejected_hidden_toast, "info");
 
     aiHouseCards.value = aiHouseCards.value.filter((x) => x.id !== h.id);
 
@@ -444,7 +608,7 @@ const undoLast = async () => {
 
     if (error) throw error;
 
-    toast("Undo ✅", "info");
+    toast(t.value.undo_toast, "info");
 
     await openMatches(false);
 
@@ -452,6 +616,48 @@ const undoLast = async () => {
   } catch (e) {
     console.error("undoLast error:", e);
     toast(e?.message || String(e), "error");
+  }
+};
+
+const onKeydown = (e) => {
+  if (!settings.shortcuts) return;
+  if (!showMatches.value) return;
+  if (!aiHouseCards.value.length) return;
+
+  const max = aiHouseCards.value.length - 1;
+
+  switch (e.key) {
+    case "ArrowDown":
+      e.preventDefault();
+      selectedIndex.value = Math.min(selectedIndex.value + 1, max);
+      break;
+
+    case "ArrowUp":
+      e.preventDefault();
+      selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+      break;
+
+    case "Enter":
+      e.preventDefault();
+      pickHouse(aiHouseCards.value[selectedIndex.value]);
+      break;
+
+    case "r":
+    case "R":
+      e.preventDefault();
+      rejectHouse(aiHouseCards.value[selectedIndex.value]);
+      break;
+
+    case "u":
+    case "U":
+      e.preventDefault();
+      undoLast();
+      break;
+
+    case "Escape":
+      e.preventDefault();
+      showMatches.value = false;
+      break;
   }
 };
 
@@ -489,10 +695,22 @@ const save = async () => {
 };
 
 const remove = async () => {
-  if (!confirm("Delete this client?")) return;
+  if (!confirm(t.value.delete_client_confirm)) return;
   await supabase.from("clients").delete().eq("id", id);
   router.push("/clients");
 };
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  await loadMatched();
+
+  const handler = (e) => {
+    if (e?.detail?.clientId === client.value?.id) loadMatched();
+  };
+  window.addEventListener("match-changed", handler);
+  onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
+
+  window.addEventListener("keydown", onKeydown);
+  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+});
 </script>

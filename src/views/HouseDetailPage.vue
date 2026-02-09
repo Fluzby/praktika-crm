@@ -9,20 +9,20 @@
         <p class="text-sm text-white/60 mt-1">
           {{ house.city || "—" }}
           <span class="mx-2 text-white/30">•</span>
-          {{ house.rooms ?? "?" }} rooms
+          {{ house.rooms ?? "?" }} {{ t.rooms }}
           <span class="mx-2 text-white/30">•</span>
           €{{ house.price ?? "—" }}
         </p>
       </div>
 
       <div class="flex items-center gap-2">
-        <button class="btn-ghost" @click="load" :disabled="saving || savingCover">Refresh</button>
+        <button class="btn-ghost" @click="load" :disabled="saving || savingCover">{{ t.refresh }}</button>
         <button
           class="px-4 py-2 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10"
           @click="deleteHouse"
           :disabled="saving || savingCover"
         >
-          Delete
+          {{ t.delete }}
         </button>
       </div>
     </div>
@@ -33,7 +33,7 @@
         <img
           :src="coverPhoto.url"
           class="w-full h-full object-cover"
-          alt="Cover"
+          :alt="t.cover"
         />
       </div>
     </div>
@@ -44,74 +44,74 @@
       <section class="col-span-12 lg:col-span-8 space-y-6">
         <div class="glass p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-4">
-            Details
+            {{ t.details }}
           </h2>
 
           <form class="grid gap-3 md:grid-cols-2" @submit.prevent="saveHouse">
             <div class="md:col-span-2">
-              <label class="text-sm text-white/60">Title</label>
-              <input class="input mt-1" v-model.trim="edit.title" placeholder="Optional title" />
+              <label class="text-sm text-white/60">{{ t.title }}</label>
+              <input class="input mt-1" v-model.trim="edit.title" :placeholder="t.optional_title" />
             </div>
 
             <div class="md:col-span-2">
-              <label class="text-sm text-white/60">Address *</label>
+              <label class="text-sm text-white/60">{{ t.address }} *</label>
               <input class="input mt-1" v-model.trim="edit.address" required />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">City</label>
+              <label class="text-sm text-white/60">{{ t.city }}</label>
               <input class="input mt-1" v-model.trim="edit.city" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Price (€)</label>
+              <label class="text-sm text-white/60">{{ t.price }}</label>
               <input class="input mt-1" type="number" min="0" v-model.number="edit.price" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Rooms</label>
+              <label class="text-sm text-white/60">{{ t.rooms }}</label>
               <input class="input mt-1" type="number" min="0" v-model.number="edit.rooms" />
             </div>
 
             <div>
-              <label class="text-sm text-white/60">Size (m²)</label>
+              <label class="text-sm text-white/60">{{ t.size_m2 }}</label>
               <input class="input mt-1" type="number" min="0" v-model.number="edit.size_m2" />
             </div>
 
             <div class="md:col-span-2">
-              <label class="text-sm text-white/60">Tags (comma separated)</label>
-              <input class="input mt-1" v-model.trim="edit.tagsInput" placeholder="garden, garage, renovated" />
+              <label class="text-sm text-white/60">{{ t.tags }}</label>
+              <input class="input mt-1" v-model.trim="edit.tagsInput" :placeholder="t.tags_placeholder" />
             </div>
 
             <div class="md:col-span-2 flex items-center gap-3 mt-2">
               <button class="btn" :disabled="saving">
-                {{ saving ? "Saving..." : "Save changes" }}
+                {{ saving ? t.saving : t.save_changes }}
               </button>
               <p v-if="err" class="text-sm text-red-300">{{ err }}</p>
             </div>
 
             <p v-if="saveMsg" class="text-xs text-emerald-400">
-              Changes saved
+              {{ t.changes_saved }}
             </p>
           </form>
         </div>
 
         <div class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
-            Description
+            {{ t.description }}
           </h2>
 
           <textarea
             class="textarea"
             rows="4"
             v-model.trim="edit.description"
-            placeholder="Internal description"
+            :placeholder="t.internal_description"
           />
         </div>
 
         <div v-if="edit.tagsInput" class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
-            Tags
+            {{ t.tags }}
           </h2>
 
           <div class="flex flex-wrap gap-2">
@@ -127,7 +127,7 @@
         <div class="glass p-6">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-white/80">
-              Photos
+              {{ t.photos }}
             </h2>
             <span class="text-xs text-white/50">
               {{ photos.length }}/10
@@ -147,12 +147,12 @@
               @click="uploadMorePhotos"
               :disabled="savingCover || filesToUpload.length === 0 || photos.length >= 10"
             >
-              Upload
+              {{ t.upload }}
             </button>
           </div>
 
           <p class="text-xs text-white/50 mb-3" v-if="photos.length >= 10">
-            Max 10 photos reached.
+            {{ t.max_photos_reached }}
           </p>
 
           <div class="grid grid-cols-2 gap-3">
@@ -161,7 +161,7 @@
               :key="p.id"
               class="rounded-xl overflow-hidden border border-white/10 bg-black/30"
             >
-              <img :src="p.url" class="w-full h-24 object-cover" alt="House" />
+              <img :src="p.url" class="w-full h-24 object-cover" :alt="t.house" />
 
               <div class="flex items-center justify-between px-2 py-1 text-xs">
                 <button
@@ -169,7 +169,7 @@
                   @click="setCover(p.id)"
                   :disabled="savingCover || p.is_cover"
                 >
-                  {{ p.is_cover ? "Cover" : "Set cover" }}
+                  {{ p.is_cover ? t.cover : t.set_cover }}
                 </button>
 
                 <button
@@ -177,7 +177,7 @@
                   @click="deletePhoto(p)"
                   :disabled="savingCover"
                 >
-                  Delete
+                  {{ t.delete }}
                 </button>
               </div>
             </div>
@@ -188,11 +188,11 @@
 
         <div class="glass-soft p-4">
           <div class="text-sm font-semibold mb-3">
-            Matched clients
+            {{ t.matched_clients }}
           </div>
 
           <div v-if="!matchedClients.length" class="text-xs text-white/60">
-            No clients matched yet.
+            {{ t.no_matched_clients }}
           </div>
 
           <div v-else class="space-y-2">
@@ -209,13 +209,14 @@
               <select
                 v-model="m.status"
                 class="text-xs bg-white/10 rounded px-2 py-0.5"
-                @change="updateMatchStatus(m)"
+                @click.stop
+                @change.stop="updateMatchStatus(m)"
               >
-                <option value="suggested">Suggested</option>
-                <option value="contacted">Contacted</option>
-                <option value="viewed">Viewed</option>
-                <option value="interested">Interested</option>
-                <option value="rejected">Rejected</option>
+                <option value="suggested">{{ t.suggested }}</option>
+                <option value="contacted">{{ t.contacted }}</option>
+                <option value="viewed">{{ t.viewed }}</option>
+                <option value="interested">{{ t.interested }}</option>
+                <option value="rejected">{{ t.rejected }}</option>
               </select>
             </div>
           </div>
@@ -225,7 +226,7 @@
               v-model="selectedClientId"
               class="input flex-1"
             >
-              <option value="">Add client…</option>
+              <option value="">{{ t.add_client_placeholder }}</option>
               <option
                 v-for="c in allClients"
                 :key="c.id"
@@ -240,16 +241,16 @@
               @click="addManualMatch"
               :disabled="!selectedClientId"
             >
-              Add
+              {{ t.add }}
             </button>
           </div>
         </div>
 
         <div class="glass-soft p-4">
-          <div class="font-semibold mb-3">Activity</div>
+          <div class="font-semibold mb-3">{{ t.activity }}</div>
 
           <div v-if="!activity.length" class="text-xs text-white/60">
-            No activity yet.
+            {{ t.no_activity }}
           </div>
 
           <div v-else class="space-y-2 text-xs">
@@ -265,7 +266,7 @@
     </div>
   </div>
 
-  <div v-else class="text-white/70">Loading…</div>
+  <div v-else class="text-white/70">{{ t.loading }}</div>
 </template>
 
 <script setup>
@@ -273,6 +274,7 @@ import { ref, onMounted, computed, onBeforeUnmount } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
+import { useT } from "../lib/i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -288,6 +290,8 @@ const matchedClients = ref([]);
 const allClients = ref([]);
 const selectedClientId = ref(null);
 const activity = ref([]);
+
+const t = useT();
 
 const edit = ref({
   title: "",
@@ -310,6 +314,17 @@ const parseTags = (s) =>
     .split(",")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
+
+const statusLabel = (s) => {
+  const map = {
+    suggested: t.value.suggested,
+    contacted: t.value.contacted,
+    viewed: t.value.viewed,
+    interested: t.value.interested,
+    rejected: t.value.rejected,
+  };
+  return map[s] || s;
+};
 
 const randomId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
@@ -359,19 +374,21 @@ const updateMatchStatus = async (m) => {
   await supabase.from("activity_log").insert({
     entity_type: "house",
     entity_id: house.value.id,
-    message: `Client marked as ${m.status}`,
+    message: `${t.value.client_marked_as} ${statusLabel(m.status)}`,
   });
 };
 
 const loadActivity = async () => {
-  const { data } = await supabase
+  if (!house.value?.id) return;
+
+  const { data, error } = await supabase
     .from("activity_log")
     .select("*")
     .eq("entity_type", "house")
     .eq("entity_id", house.value.id)
     .order("created_at", { ascending: false });
 
-  activity.value = data || [];
+  if (!error) activity.value = data || [];
 };
 
 const signedUrl = async (path) => {
@@ -423,6 +440,7 @@ const load = async () => {
   photos.value = withUrls;
 
   await loadMatchedClients();
+  await loadActivity();
 };
 
 const saveHouse = async () => {
@@ -431,7 +449,7 @@ const saveHouse = async () => {
   saveMsg.value = "";
 
   if (!edit.value.address?.trim()) {
-    err.value = "Address is required.";
+    err.value = t.value.address_required;
     saving.value = false;
     return;
   }
@@ -451,7 +469,7 @@ const saveHouse = async () => {
     const { error: e } = await supabase.from("houses").update(payload).eq("id", id);
     if (e) throw e;
 
-    saveMsg.value = "Saved ✅";
+    saveMsg.value = t.value.saved;
     setTimeout(() => (saveMsg.value = ""), 1500);
 
     await load();
@@ -463,7 +481,7 @@ const saveHouse = async () => {
 };
 
 const deleteHouse = async () => {
-  if (!confirm("Delete this house and all photos?")) return;
+  if (!confirm(t.value.delete_house_confirm)) return;
 
   saving.value = true;
   err.value = "";
@@ -555,7 +573,7 @@ const setCover = async (photoId) => {
 };
 
 const deletePhoto = async (p) => {
-  if (!confirm("Delete this photo?")) return;
+  if (!confirm(t.value.delete_photo_confirm)) return;
 
   savingCover.value = true;
   err.value = "";
@@ -580,11 +598,12 @@ const deletePhoto = async (p) => {
 
 onMounted(load);
 onMounted(loadAllClients);
-onMounted(loadActivity);
 onMounted(() => {
   const handler = (e) => {
-    if (e?.detail?.houseId === house.value?.id) {
+    if (!house.value?.id) return;
+    if (e?.detail?.houseId === house.value.id) {
       loadMatchedClients();
+      loadActivity();
     }
   };
   window.addEventListener("match-changed", handler);
