@@ -7,7 +7,7 @@
     </aside>
 
     <main class="h-screen overflow-y-auto overscroll-none pl-[132px]">
-      <div class="mx-auto max-w-6xl px-6 py-10">
+      <div class="max-w-6xl ml-0 mr-auto px-6 py-10">
         <RouterView />
       </div>
     </main>

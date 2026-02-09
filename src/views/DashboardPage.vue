@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-end justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">{{ t.dashboard }}</h1>
@@ -8,7 +7,7 @@
       </div>
 
       <div class="flex items-center gap-2 flex-wrap justify-end">
-        <button class="btn" @click="showAddHouse = true">+ {{ t.houses }}</button>
+        <button class="btn-ghost" @click="showAddHouse = true">+ {{ t.houses }}</button>
         <button class="btn-ghost" @click="showAddClient = true">+ {{ t.clients }}</button>
         <RouterLink to="/houses" class="btn-ghost">{{ t.open }} {{ t.houses }}</RouterLink>
         <RouterLink to="/clients" class="btn-ghost">{{ t.open }} {{ t.clients }}</RouterLink>
@@ -16,11 +15,8 @@
       </div>
     </div>
 
-    <!-- Workbench layout -->
     <div class="grid grid-cols-12 gap-6">
-      <!-- LEFT: main column -->
       <section class="col-span-12 lg:col-span-8 space-y-6">
-        <!-- Stats row -->
         <div v-if="settings.dashboardWidgets.overview" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -91,7 +87,6 @@
           </div>
         </div>
 
-        <!-- Latest listings -->
         <div v-if="settings.dashboardWidgets.latest_listings" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -132,9 +127,7 @@
         </div>
       </section>
 
-      <!-- RIGHT: secondary column -->
       <aside class="col-span-12 lg:col-span-4 space-y-6">
-        <!-- Recent clients -->
         <div v-if="settings.dashboardWidgets.recent_clients" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -183,7 +176,6 @@
       </aside>
     </div>
 
-    <!-- Add House modal -->
     <Modal
       :open="showAddHouse"
       :title="t.add_house"
@@ -252,7 +244,6 @@
       </form>
     </Modal>
 
-    <!-- Add Client modal -->
     <Modal
       :open="showAddClient"
       :title="t.add_client"
@@ -452,7 +443,7 @@ const load = async () => {
       .from("houses")
       .select("id, address, city, price, rooms, created_at")
       .order("created_at", { ascending: false })
-      .limit(6);
+      .limit(3);
 
     if (cRecent.error) throw cRecent.error;
     if (hRecent.error) throw hRecent.error;

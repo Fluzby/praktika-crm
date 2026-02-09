@@ -7,13 +7,13 @@
       tabindex="-1"
     >
       <div
-        class="absolute inset-0"
+        class="absolute inset-0 modal-backdrop"
         :class="settings.aiModalStrong ? 'bg-black/70 backdrop-blur-md' : 'bg-black/50 backdrop-blur-sm'"
         @click="close"
       ></div>
 
       <div
-        class="relative w-full max-w-2xl rounded-2xl border border-white/10 p-5"
+        class="relative w-full max-w-2xl rounded-2xl border border-white/10 p-5 modal-panel"
         :class="settings.aiModalStrong ? 'bg-black/85 backdrop-blur-xl' : 'bg-black/70 backdrop-blur-lg'"
         role="dialog"
         aria-modal="true"

@@ -24,9 +24,9 @@ defineProps({
   display: grid;
   place-items: center;
 
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.03);
-  color: rgba(255,255,255,0.9);
+  border: 1px solid var(--nav-border);
+  background: var(--nav-bg);
+  color: var(--nav-text);
 
   transition: 160ms ease;
   font-size: 20px;
@@ -34,12 +34,14 @@ defineProps({
 }
 
 .iconBtn:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.14);
+  background: var(--nav-bg-hover);
+  border-color: var(--nav-border-hover);
 }
 
 .iconBtnActive {
-  background: rgba(16,185,129,0.16);
-  border-color: rgba(16,185,129,0.35);
+  background: var(--nav-bg-active);
+  border-color: var(--nav-border-active);
+  color: var(--nav-text-active);
 }
+
 </style>

@@ -29,7 +29,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Try cache first (unless forced)
     if (!force) {
       const { data: cached } = await supabase
         .from("ai_match_cache")
@@ -50,7 +49,6 @@ serve(async (req) => {
       }
     }
 
-    // 1️⃣ Load client
     const { data: client, error: cErr } = await supabase
       .from("clients")
       .select("id, full_name, notes, min_price, max_price, min_rooms, max_rooms, preferred_tags")
@@ -59,7 +57,6 @@ serve(async (req) => {
 
     if (cErr || !client) throw cErr;
 
-    // Load rejected house IDs for this client
     const { data: rejected } = await supabase
       .from("house_matches")
       .select("house_id")
@@ -68,7 +65,6 @@ serve(async (req) => {
 
     const rejectedIds = new Set((rejected || []).map((r) => r.house_id));
 
-    // 2️⃣ Load candidate houses
     let q = supabase
       .from("houses")
       .select("id, address, city, price, rooms, tags, description")
@@ -93,7 +89,6 @@ serve(async (req) => {
       });
     }
 
-    // 3️⃣ Build AI prompt
     const prompt = `
 You are a real estate assistant.
 
@@ -149,7 +144,6 @@ IMPORTANT:
 - Return at most ${topN} results.
 `;
 
-    // 4️⃣ Call OpenAI
     const openai = new OpenAI({
       apiKey: Deno.env.get("OPENAI_API_KEY"),
     });

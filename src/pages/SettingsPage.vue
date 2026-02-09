@@ -68,6 +68,13 @@ const t = useT();
           >
             {{ t.brutalist }}
           </button>
+          <button
+            class="btn-ghost"
+            :class="settings.theme === 'plain' ? 'ring-1 ring-white/20' : ''"
+            @click="settings.theme = 'plain'"
+          >
+            {{ t.plain }}
+          </button>
         </div>
       </div>
 

@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6" v-if="house">
-    <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">
@@ -27,7 +26,6 @@
       </div>
     </div>
 
-    <!-- Cover -->
     <div v-if="coverPhoto" class="glass-soft p-2">
       <div class="w-full h-[260px] rounded-xl overflow-hidden bg-black/30">
         <img
@@ -38,9 +36,7 @@
       </div>
     </div>
 
-    <!-- Main grid -->
     <div class="grid grid-cols-12 gap-6">
-      <!-- LEFT: Details -->
       <section class="col-span-12 lg:col-span-8 space-y-6">
         <div class="glass p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-4">
@@ -122,7 +118,6 @@
         </div>
       </section>
 
-      <!-- RIGHT: Photos -->
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <div class="glass p-6">
           <div class="flex items-center justify-between mb-3">
@@ -384,7 +379,7 @@ const loadActivity = async () => {
   const { data, error } = await supabase
     .from("activity_log")
     .select("*")
-    .eq("entity_type", "house")
+    .eq("entity", "house")
     .eq("entity_id", house.value.id)
     .order("created_at", { ascending: false });
 

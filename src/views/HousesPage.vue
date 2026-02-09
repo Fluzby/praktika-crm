@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-end justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">{{ t.houses }}</h1>
@@ -13,7 +12,6 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
     <div class="glass p-4">
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
@@ -33,7 +31,6 @@
       </div>
     </div>
 
-    <!-- List -->
     <div class="space-y-3">
       <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
@@ -46,7 +43,6 @@
           @click="openHouse(h.id)"
         >
           <div class="flex gap-4">
-            <!-- Thumb -->
             <div class="w-28 h-20 rounded-xl overflow-hidden border border-white/10 bg-black/30 shrink-0">
               <img
                 v-if="coverUrls[h.id]"
@@ -59,7 +55,6 @@
               </div>
             </div>
 
-            <!-- Content -->
             <div class="min-w-0 flex-1">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -82,7 +77,6 @@
                 </div>
               </div>
 
-              <!-- Tags -->
               <div v-if="(h.tags || []).length" class="mt-3 flex flex-wrap gap-2">
                 <span v-for="t in h.tags" :key="t" class="chip">
                   {{ t }}
@@ -98,7 +92,6 @@
       </ul>
     </div>
 
-    <!-- Add modal -->
     <Modal
       :open="showAdd"
       :title="t.add_house"

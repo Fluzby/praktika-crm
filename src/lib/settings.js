@@ -50,6 +50,7 @@ export function applyTheme() {
     "glass",
     "warm",
     "brutalist",
+    "plain",
   ];
 
   allThemes.forEach((t) => {
@@ -58,6 +59,9 @@ export function applyTheme() {
   });
 
   root.classList.add(`theme-${theme}`);
-  root.classList.toggle("dark", theme === "dark" || theme === "glass" || theme === "warm" || theme === "brutalist");
+  root.classList.toggle(
+    "dark",
+    theme === "dark" || theme === "glass" || theme === "warm" || theme === "brutalist"
+  );
   root.classList.toggle("light", theme === "light");
 }

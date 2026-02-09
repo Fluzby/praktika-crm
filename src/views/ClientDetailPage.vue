@@ -1,6 +1,5 @@
 <template>
   <div v-if="client" class="space-y-6">
-    <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">
@@ -23,11 +22,8 @@
       </div>
     </div>
 
-    <!-- Main layout -->
     <div class="grid grid-cols-12 gap-6">
-      <!-- LEFT -->
       <section class="col-span-12 lg:col-span-8 space-y-6">
-        <!-- Details -->
         <div class="glass p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-4">
             {{ t.details }}
@@ -71,7 +67,6 @@
           </form>
         </div>
 
-        <!-- Notes -->
         <div class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
             {{ t.notes }}
@@ -172,7 +167,6 @@
         </div>
       </section>
 
-      <!-- RIGHT -->
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <div class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
@@ -211,12 +205,12 @@
 
         <div
           v-else
-          class="glass-soft rounded-xl p-3 max-h-[420px] overflow-y-auto space-y-2"
+          class="glass-soft rounded-xl p-3 max-h-[420px] overflow-y-auto space-y-2 ai-matchup-list"
         >
           <div
             v-for="(h, i) in aiHouseCards"
             :key="h.id"
-            class="rounded-lg cursor-pointer transition"
+            class="rounded-lg cursor-pointer transition ai-card"
             :class="[
               'rounded-xl border p-4 transition',
               selectedIndex === i

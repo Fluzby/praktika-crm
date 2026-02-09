@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-end justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">{{ t.clients }}</h1>
@@ -13,7 +12,6 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
     <div class="glass p-4">
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
@@ -33,7 +31,6 @@
       </div>
     </div>
 
-    <!-- List -->
     <div class="space-y-3">
       <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
@@ -46,7 +43,6 @@
           @click="openClient(c.id)"
         >
           <div class="flex items-start justify-between gap-4">
-            <!-- Main -->
             <div class="min-w-0">
               <div class="font-semibold truncate">
                 {{ c.full_name }}
@@ -66,7 +62,6 @@
               </div>
             </div>
 
-            <!-- Meta -->
             <div class="text-xs text-white/45 whitespace-nowrap">
               {{ formatDate(c.created_at) }}
             </div>
@@ -79,7 +74,6 @@
       </ul>
     </div>
 
-    <!-- Add modal -->
     <Modal
       :open="showAdd"
       :title="t.add_client"

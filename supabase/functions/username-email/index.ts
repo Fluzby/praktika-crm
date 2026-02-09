@@ -28,7 +28,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1) Find user id by username
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id")
@@ -42,7 +41,6 @@ serve(async (req) => {
       );
     }
 
-    // 2) Get email from auth.users
     const { data: user, error: userError } =
       await supabaseAdmin.auth.admin.getUserById(profile.id);
 

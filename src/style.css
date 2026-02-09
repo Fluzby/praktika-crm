@@ -17,6 +17,17 @@
     overscroll-behavior: none;
   }
 
+  :root {
+    --nav-border: rgba(255, 255, 255, 0.1);
+    --nav-border-hover: rgba(255, 255, 255, 0.14);
+    --nav-bg: rgba(255, 255, 255, 0.03);
+    --nav-bg-hover: rgba(255, 255, 255, 0.08);
+    --nav-bg-active: rgba(16, 185, 129, 0.16);
+    --nav-border-active: rgba(16, 185, 129, 0.35);
+    --nav-text: rgba(255, 255, 255, 0.9);
+    --nav-text-active: rgba(255, 255, 255, 0.95);
+  }
+
   html.light, html.light body {
     background: #f7f7f7;
     color: #0f0f0f;
@@ -128,6 +139,110 @@ html.theme-brutalist body {
 
 .theme-brutalist .btn-ghost {
   @apply border-white/70;
+}
+
+.theme-glass {
+  --nav-border: rgba(255, 255, 255, 0.18);
+  --nav-border-hover: rgba(255, 255, 255, 0.28);
+  --nav-bg: rgba(255, 255, 255, 0.06);
+  --nav-bg-hover: rgba(255, 255, 255, 0.12);
+  --nav-bg-active: rgba(56, 189, 248, 0.18);
+  --nav-border-active: rgba(56, 189, 248, 0.45);
+}
+
+.theme-warm {
+  --nav-border: rgba(255, 255, 255, 0.14);
+  --nav-border-hover: rgba(255, 255, 255, 0.22);
+  --nav-bg: rgba(255, 255, 255, 0.05);
+  --nav-bg-hover: rgba(255, 255, 255, 0.1);
+  --nav-bg-active: rgba(251, 191, 36, 0.22);
+  --nav-border-active: rgba(251, 191, 36, 0.45);
+}
+
+.theme-brutalist {
+  --nav-border: rgba(255, 255, 255, 0.75);
+  --nav-border-hover: rgba(255, 255, 255, 0.9);
+  --nav-bg: rgba(255, 255, 255, 0.02);
+  --nav-bg-hover: rgba(255, 255, 255, 0.06);
+  --nav-bg-active: rgba(255, 255, 255, 0.12);
+  --nav-border-active: rgba(255, 255, 255, 0.95);
+  --nav-text-active: rgba(0, 0, 0, 0.95);
+}
+
+.theme-brutalist .iconBtn,
+.theme-brutalist .iconBtnActive {
+  border-radius: 0;
+}
+
+.theme-plain {
+  --nav-border: #d0d0d0;
+  --nav-border-hover: #b5b5b5;
+  --nav-bg: #f7f7f7;
+  --nav-bg-hover: #ececec;
+  --nav-bg-active: #dfe4e7;
+  --nav-border-active: #a7adb3;
+  --nav-text: #111111;
+  --nav-text-active: #111111;
+}
+
+html.theme-plain,
+html.theme-plain body {
+  background: #ffffff;
+  color: #000000;
+}
+
+.theme-plain .glass,
+.theme-plain .glass-soft,
+.theme-plain .btn,
+.theme-plain .btn-ghost,
+.theme-plain .input,
+.theme-plain .textarea,
+.theme-plain .chip {
+  all: revert;
+}
+
+.theme-plain .text-white,
+.theme-plain .text-white\/80,
+.theme-plain .text-white\/70,
+.theme-plain .text-white\/60,
+.theme-plain .text-white\/50,
+.theme-plain .text-white\/45,
+.theme-plain .text-white\/40 {
+  color: #000000;
+}
+
+.theme-plain .modal-backdrop {
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: none;
+}
+
+.theme-plain .modal-panel {
+  background: #ffffff;
+  border-color: #dddddd;
+  color: #000000;
+}
+
+.theme-plain .ai-matchup-list {
+  background: #ffffff;
+  border-color: #e5e5e5;
+}
+
+.theme-plain .ai-card {
+  background: #fafafa;
+  border-color: #e5e5e5;
+}
+
+.theme-glass .modal-panel {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.theme-warm .modal-panel {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(12, 8, 6, 0.82);
+}
+
+.theme-brutalist .modal-panel {
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .light .text-white {
