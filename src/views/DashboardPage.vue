@@ -56,6 +56,58 @@
 
         <!-- KPI widget removed (Active clients / Matches / Cold houses / AI efficiency) -->
 
+        <div v-if="settings.dashboardWidgets.house_availability" class="glass p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">{{ t.widget_house_availability }}</h2>
+              <p class="text-sm text-white/60 mt-1">{{ t.houses }}</p>
+            </div>
+          </div>
+
+          <div class="mt-5 flex flex-col md:flex-row md:items-center gap-6">
+            <div class="shrink-0 grid place-items-center">
+              <svg width="120" height="120" viewBox="0 0 120 120" class="overflow-visible">
+                <g transform="translate(60,60) rotate(-90)">
+                  <circle
+                    r="42"
+                    cx="0"
+                    cy="0"
+                    fill="transparent"
+                    stroke="var(--nav-border)"
+                    stroke-width="14"
+                  />
+                  <circle
+                    v-for="s in availabilitySegments"
+                    :key="s.key"
+                    r="42"
+                    cx="0"
+                    cy="0"
+                    fill="transparent"
+                    :stroke="s.color"
+                    stroke-width="14"
+                    stroke-linecap="round"
+                    :stroke-dasharray="s.dasharray"
+                    :stroke-dashoffset="s.dashoffset"
+                  />
+                </g>
+              </svg>
+              <div class="text-sm text-white/60 -mt-2">
+                {{ availabilityTotal }} {{ t.total }}
+              </div>
+            </div>
+
+            <div class="flex-1 grid gap-2 text-sm">
+              <div v-for="s in availabilityLegend" :key="s.key" class="flex items-center justify-between gap-6">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="h-2.5 w-2.5 rounded-full" :style="{ background: s.color }"></span>
+                  <span class="truncate">{{ s.label }}</span>
+                </div>
+                <div class="tabular-nums text-white/60">{{ s.count ?? "—" }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="settings.dashboardWidgets.latest_listings" class="glass p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -85,7 +137,13 @@
                   </div>
                 </div>
 
-                <span class="chip">{{ formatDate(h.created_at) }}</span>
+                <div class="flex flex-col items-end gap-2">
+                  <span class="chip inline-flex items-center gap-2" :style="availabilityChipStyle(h.availability)">
+                    <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(h.availability) }"></span>
+                    <span>{{ availabilityLabel(h.availability) }}</span>
+                  </span>
+                  <span class="chip">{{ formatDate(h.created_at) }}</span>
+                </div>
               </div>
             </li>
 
@@ -220,6 +278,17 @@
             </div>
 
             <form id="add-house-form" class="space-y-8" @submit.prevent="createHouseAndClose">
+              <div class="glass-soft p-4 rounded-xl">
+                <h3 class="text-sm font-semibold mb-3">
+                  {{ t.availability }}
+                </h3>
+                <select class="input" v-model="newHouse.availability">
+                  <option value="entering">{{ t.availability_entering }}</option>
+                  <option value="available">{{ t.availability_available }}</option>
+                  <option value="unavailable">{{ t.availability_unavailable }}</option>
+                </select>
+              </div>
+
               <div
                 v-for="(group, groupKey) in filteredGroups"
                 :key="groupKey"
@@ -351,6 +420,27 @@
           <textarea class="textarea mt-1" rows="4" v-model.trim="clientForm.notes"></textarea>
         </div>
 
+        <label class="md:col-span-2 flex items-center gap-3 mt-1">
+          <input type="checkbox" v-model="clientAlreadyInterested" />
+          <span class="text-sm text-white/60">{{ t.already_interested }}</span>
+        </label>
+
+        <div v-if="clientAlreadyInterested" class="md:col-span-2">
+          <label class="text-sm text-white/60">{{ t.interested_house }}</label>
+          <select
+            class="input mt-1"
+            v-model="clientInterestedHouseId"
+            :disabled="clientHousesLoading"
+            :required="clientAlreadyInterested"
+          >
+            <option value="">{{ t.select_house }}</option>
+            <option v-for="h in clientHousesForSelect" :key="h.id" :value="h.id">
+              {{ h.address }}{{ h.city ? ` • ${h.city}` : "" }}
+            </option>
+          </select>
+          <p v-if="clientHousesError" class="text-xs text-red-300 mt-2">{{ clientHousesError }}</p>
+        </div>
+
         <div class="md:col-span-2 flex items-center gap-3 mt-2">
           <button class="btn" :disabled="creatingClient">
             {{ creatingClient ? t.saving : t.save }}
@@ -390,6 +480,10 @@ const error = ref("");
 
 const lastUpdated = ref("—");
 
+const availableCount = ref(null);
+const unavailableCount = ref(null);
+const enteringCount = ref(null);
+
 const showAddHouse = ref(false);
 const showAddClient = ref(false);
 
@@ -401,8 +495,15 @@ const creatingClient = ref(false);
 const createClientError = ref("");
 const createClientOk = ref(false);
 
+const clientAlreadyInterested = ref(false);
+const clientInterestedHouseId = ref("");
+const clientHousesForSelect = ref([]);
+const clientHousesLoading = ref(false);
+const clientHousesError = ref("");
+
 const newHouse = ref({
   raw_data: {},
+  availability: "entering",
   description: "",
   tagsInput: "",
 });
@@ -418,6 +519,23 @@ const clientForm = ref({
 
 const t = useT();
 
+const loadClientHousesForSelect = async () => {
+  clientHousesLoading.value = true;
+  clientHousesError.value = "";
+  try {
+    const { data, error } = await supabase
+      .from("houses")
+      .select("id, address, city")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    clientHousesForSelect.value = data || [];
+  } catch (e) {
+    clientHousesError.value = e?.message || String(e);
+  } finally {
+    clientHousesLoading.value = false;
+  }
+};
+
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
 
@@ -426,6 +544,75 @@ const formatDate = (iso) => {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
 };
+
+const availabilityLabel = (a) => {
+  const map = {
+    available: t.value.availability_available,
+    unavailable: t.value.availability_unavailable,
+    entering: t.value.availability_entering,
+  };
+  return map[a] || t.value.availability_entering;
+};
+
+const availabilityColor = (a) => {
+  const map = {
+    available: "#10b981",
+    unavailable: "#ef4444",
+    entering: "#f59e0b",
+  };
+  return map[a] || map.entering;
+};
+
+const availabilityChipStyle = (a) => {
+  const c = availabilityColor(a);
+  return {
+    backgroundColor: `${c}22`,
+    borderColor: `${c}66`,
+  };
+};
+
+const availabilityTotal = computed(() => {
+  const a = availableCount.value ?? 0;
+  const u = unavailableCount.value ?? 0;
+  const e = enteringCount.value ?? 0;
+  return a + u + e;
+});
+
+const availabilityLegend = computed(() => [
+  { key: "available", label: t.value.availability_available, count: availableCount.value, color: availabilityColor("available") },
+  { key: "unavailable", label: t.value.availability_unavailable, count: unavailableCount.value, color: availabilityColor("unavailable") },
+  { key: "entering", label: t.value.availability_entering, count: enteringCount.value, color: availabilityColor("entering") },
+]);
+
+const availabilitySegments = computed(() => {
+  const total = availabilityTotal.value;
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  if (!total) {
+    return [];
+  }
+
+  const parts = [
+    { key: "available", count: availableCount.value ?? 0, color: availabilityColor("available") },
+    { key: "unavailable", count: unavailableCount.value ?? 0, color: availabilityColor("unavailable") },
+    { key: "entering", count: enteringCount.value ?? 0, color: availabilityColor("entering") },
+  ];
+
+  // Render in a stable order, but skip zero segments.
+  let offset = 0;
+  return parts
+    .filter((p) => p.count > 0)
+    .map((p) => {
+      const len = (p.count / total) * c;
+      const seg = {
+        ...p,
+        dasharray: `${len} ${c}`,
+        dashoffset: `${-offset}`,
+      };
+      offset += len;
+      return seg;
+    });
+});
 
 const onHouseFilesChange = (e) => {
   houseFiles.value = Array.from(e.target.files || []).slice(0, 10);
@@ -491,6 +678,19 @@ watch(showAddHouse, (open) => {
   if (!open) fieldSearch.value = "";
 });
 
+watch(showAddClient, (open) => {
+  if (!open) return;
+  clientAlreadyInterested.value = false;
+  clientInterestedHouseId.value = "";
+  clientHousesError.value = "";
+});
+
+watch(clientAlreadyInterested, (v) => {
+  if (!v) return;
+  if (clientHousesForSelect.value.length > 0) return;
+  loadClientHousesForSelect();
+});
+
 const filteredGroups = computed(() => {
   const q = fieldSearch.value.trim().toLowerCase();
   if (!q) return HOUSE_FIELD_GROUPS;
@@ -529,6 +729,27 @@ const load = async () => {
     housesCount.value = hCount.count ?? 0;
     photosCount.value = pCount.count ?? 0;
 
+    const aCount = await supabase
+      .from("houses")
+      .select("*", { count: "exact", head: true })
+      .eq("availability", "available");
+
+    const uCount = await supabase
+      .from("houses")
+      .select("*", { count: "exact", head: true })
+      .eq("availability", "unavailable");
+
+    // If the column doesn't exist yet, Supabase will error. Keep the widget graceful.
+    if (!aCount.error) availableCount.value = aCount.count ?? 0;
+    if (!uCount.error) unavailableCount.value = uCount.count ?? 0;
+    if (!aCount.error && !uCount.error) {
+      const total = hCount.count ?? 0;
+      const a = aCount.count ?? 0;
+      const u = uCount.count ?? 0;
+      // Treat null/unknown values as "entering" for the distribution.
+      enteringCount.value = Math.max(0, total - a - u);
+    }
+
     const cRecent = await supabase
       .from("clients")
       .select("id, full_name, phone, email, created_at")
@@ -537,7 +758,7 @@ const load = async () => {
 
     const hRecent = await supabase
       .from("houses")
-      .select("id, address, city, price, rooms, created_at")
+      .select("id, address, city, price, rooms, availability, created_at")
       .order("created_at", { ascending: false })
       .limit(3);
 
@@ -574,6 +795,7 @@ const createHouse = async () => {
       external_id: cleanStr(raw["ID"]) || null,
       deal_type: cleanStr(raw["Tehing"]) || null,
       object_type: cleanStr(raw["Objekti liik"]) || null,
+      availability: newHouse.value.availability || "entering",
       address: makeAddressFromRaw(raw),
       city: makeCityFromRaw(raw) === "—" ? null : makeCityFromRaw(raw),
       price: toNum(raw["Tehingu hind"]),
@@ -616,7 +838,7 @@ const createHouse = async () => {
       if (ins.error) throw ins.error;
     }
 
-    newHouse.value = { raw_data: {}, description: "", tagsInput: "" };
+    newHouse.value = { raw_data: {}, availability: "entering", description: "", tagsInput: "" };
     fieldSearch.value = "";
     houseFiles.value = [];
 
@@ -653,7 +875,23 @@ const createClient = async () => {
 
     await logActivity({ type: "create", entity: "client", entity_id: clientRow.id, label: payload.full_name });
 
+    if (clientAlreadyInterested.value) {
+      if (!clientInterestedHouseId.value) {
+        throw new Error(t.value.select_house);
+      }
+
+      const { error: matchErr } = await supabase.from("house_matches").upsert({
+        client_id: clientRow.id,
+        house_id: clientInterestedHouseId.value,
+        status: "interested",
+        source: "manual",
+      });
+      if (matchErr) throw matchErr;
+    }
+
     clientForm.value = { full_name: "", phone: "", email: "", notes: "" };
+    clientAlreadyInterested.value = false;
+    clientInterestedHouseId.value = "";
     await load();
 
     createClientOk.value = true;

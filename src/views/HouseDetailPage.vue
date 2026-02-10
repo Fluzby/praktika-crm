@@ -12,6 +12,13 @@
           <span class="mx-2 text-white/30">•</span>
           €{{ house.price ?? "—" }}
         </p>
+
+        <div class="mt-2">
+          <span class="chip inline-flex items-center gap-2" :style="availabilityChipStyle(house.availability)">
+            <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(house.availability) }"></span>
+            <span>{{ availabilityLabel(house.availability) }}</span>
+          </span>
+        </div>
       </div>
 
       <div class="flex items-center gap-2">
@@ -76,6 +83,14 @@
             </div>
 
             <div>
+              <div class="text-xs text-white/50">{{ t.availability }}</div>
+              <div class="text-sm inline-flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(house.availability) }"></span>
+                <span>{{ availabilityLabel(house.availability) }}</span>
+              </div>
+            </div>
+
+            <div>
               <div class="text-xs text-white/50">{{ t.price }}</div>
               <div class="text-sm tabular-nums">€{{ house.price ?? "—" }}</div>
             </div>
@@ -105,6 +120,15 @@
             <div>
               <label class="text-sm text-white/60">{{ t.city }}</label>
               <input class="input mt-1" v-model.trim="edit.city" />
+            </div>
+
+            <div>
+              <label class="text-sm text-white/60">{{ t.availability }}</label>
+              <select class="input mt-1" v-model="edit.availability">
+                <option value="entering">{{ t.availability_entering }}</option>
+                <option value="available">{{ t.availability_available }}</option>
+                <option value="unavailable">{{ t.availability_unavailable }}</option>
+              </select>
             </div>
 
             <div>
@@ -458,6 +482,7 @@ const edit = ref({
   title: "",
   address: "",
   city: "",
+  availability: "entering",
   price: null,
   rooms: null,
   size_m2: null,
@@ -505,6 +530,32 @@ const statusLabel = (s) => {
     rejected: t.value.rejected,
   };
   return map[s] || s;
+};
+
+const availabilityLabel = (a) => {
+  const map = {
+    available: t.value.availability_available,
+    unavailable: t.value.availability_unavailable,
+    entering: t.value.availability_entering,
+  };
+  return map[a] || t.value.availability_entering;
+};
+
+const availabilityColor = (a) => {
+  const map = {
+    available: "#10b981",
+    unavailable: "#ef4444",
+    entering: "#f59e0b",
+  };
+  return map[a] || map.entering;
+};
+
+const availabilityChipStyle = (a) => {
+  const c = availabilityColor(a);
+  return {
+    backgroundColor: `${c}22`,
+    borderColor: `${c}66`,
+  };
 };
 
 const randomId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
@@ -597,6 +648,7 @@ const load = async () => {
     title: house.value.title || "",
     address: house.value.address || "",
     city: house.value.city || "",
+    availability: house.value.availability || "entering",
     price: house.value.price ?? null,
     rooms: house.value.rooms ?? null,
     size_m2: house.value.size_m2 ?? null,
@@ -651,6 +703,7 @@ const saveHouse = async () => {
       title: edit.value.title || null,
       address: edit.value.address,
       city: edit.value.city || null,
+      availability: edit.value.availability || "entering",
       price: edit.value.price ?? null,
       rooms: edit.value.rooms ?? null,
       size_m2: edit.value.size_m2 ?? null,

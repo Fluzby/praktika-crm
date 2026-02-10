@@ -81,6 +81,39 @@
     @apply text-xs px-2 py-1 rounded-full bg-white/[0.06] border border-white/10;
   }
 
+  .back-to-top {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--nav-border);
+    background: var(--nav-bg);
+    color: var(--nav-text);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .back-to-top:hover {
+    background: var(--nav-bg-hover);
+    border-color: var(--nav-border-hover);
+  }
+
+  .back-to-top:active {
+    transform: translateY(1px);
+  }
+
   .light .glass {
     /* Crisp cards on light theme: white, subtle border, real depth */
     @apply border-black/10 bg-white;
@@ -108,6 +141,12 @@
 
   .light .chip {
     @apply bg-black/[0.04] border-black/10 text-black/80;
+  }
+
+  .light .back-to-top {
+    box-shadow: 0 10px 24px rgba(15, 15, 15, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 }
 
@@ -156,6 +195,13 @@ html.theme-brutalist body {
 
 .theme-brutalist .btn-ghost {
   @apply border-white/70;
+}
+
+.theme-brutalist .back-to-top {
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .theme-glass {
@@ -268,6 +314,12 @@ html.theme-plain body {
 
 .theme-plain .btn-ghost:hover {
   background: rgba(0, 0, 0, 0.04);
+}
+
+.theme-plain .back-to-top {
+  box-shadow: 0 10px 24px rgba(15, 15, 15, 0.12);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .theme-plain .input,

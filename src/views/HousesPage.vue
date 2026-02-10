@@ -73,7 +73,31 @@
                 </div>
 
                 <div class="text-xs text-white/45 whitespace-nowrap">
-                  {{ formatDate(h.created_at) }}
+                  <div>{{ formatDate(h.created_at) }}</div>
+                  <div class="mt-2">
+                    <span
+                      class="chip inline-flex items-center gap-2 pr-7 relative"
+                      :style="availabilityChipStyle(h.availability)"
+                      @click.stop
+                    >
+                      <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(h.availability) }"></span>
+                      <select
+                        class="bg-transparent appearance-none outline-none border-0 p-0 m-0 text-xs cursor-pointer"
+                        v-model="h.availability"
+                        @focus="h._prevAvailability = h.availability || 'entering'"
+                        @click.stop
+                        @change.stop="updateAvailability(h)"
+                        :disabled="savingAvailability[h.id]"
+                      >
+                        <option value="entering">{{ t.availability_entering }}</option>
+                        <option value="available">{{ t.availability_available }}</option>
+                        <option value="unavailable">{{ t.availability_unavailable }}</option>
+                      </select>
+                      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none">
+                        ▾
+                      </span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -167,6 +191,17 @@
             </div>
 
             <form id="add-house-form" class="space-y-8" @submit.prevent="createHouseAndClose">
+              <div class="glass-soft p-4 rounded-xl">
+                <h3 class="text-sm font-semibold mb-3">
+                  {{ t.availability }}
+                </h3>
+                <select class="input" v-model="newHouse.availability">
+                  <option value="entering">{{ t.availability_entering }}</option>
+                  <option value="available">{{ t.availability_available }}</option>
+                  <option value="unavailable">{{ t.availability_unavailable }}</option>
+                </select>
+              </div>
+
               <div
                 v-for="(group, groupKey) in filteredGroups"
                 :key="groupKey"
@@ -299,6 +334,7 @@ const createOk = ref(false);
 
 const newHouse = ref({
   raw_data: {},
+  availability: "entering",
   description: "",
   tagsInput: "",
 });
@@ -396,6 +432,55 @@ const formatDate = (iso) => {
   return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
 };
 
+const availabilityColor = (a) => {
+  const map = {
+    available: "#10b981",
+    unavailable: "#ef4444",
+    entering: "#f59e0b",
+  };
+  return map[a] || map.entering;
+};
+
+const availabilityChipStyle = (a) => {
+  const c = availabilityColor(a);
+  return {
+    backgroundColor: `${c}22`, // ~13% alpha
+    borderColor: `${c}66`, // ~40% alpha
+  };
+};
+
+const availabilityLabel = (a) => {
+  const map = {
+    available: t.value.availability_available,
+    unavailable: t.value.availability_unavailable,
+    entering: t.value.availability_entering,
+  };
+  return map[a] || t.value.availability_entering;
+};
+
+const savingAvailability = ref({});
+
+const updateAvailability = async (h) => {
+  const next = h.availability || "entering";
+  const prev = h._prevAvailability || "entering";
+  savingAvailability.value = { ...savingAvailability.value, [h.id]: true };
+
+  try {
+    const { error: e } = await supabase
+      .from("houses")
+      .update({ availability: next })
+      .eq("id", h.id);
+    if (e) throw e;
+    h._prevAvailability = next;
+  } catch (e) {
+    error.value = e?.message || String(e);
+    h.availability = prev;
+    h._prevAvailability = prev;
+  } finally {
+    savingAvailability.value = { ...savingAvailability.value, [h.id]: false };
+  }
+};
+
 const getSignedUrl = async (path) => {
   const { data, error } = await supabase.storage
     .from("house-photos")
@@ -471,6 +556,7 @@ const createHouse = async () => {
       external_id: cleanStr(raw["ID"]) || null,
       deal_type: cleanStr(raw["Tehing"]) || null,
       object_type: cleanStr(raw["Objekti liik"]) || null,
+      availability: newHouse.value.availability || "entering",
       address: makeAddressFromRaw(raw),
       city: makeCityFromRaw(raw) === "—" ? null : makeCityFromRaw(raw),
       price: toNum(raw["Tehingu hind"]),
@@ -509,7 +595,7 @@ const createHouse = async () => {
       if (ins.error) throw ins.error;
     }
 
-    newHouse.value = { raw_data: {}, description: "", tagsInput: "" };
+    newHouse.value = { raw_data: {}, availability: "entering", description: "", tagsInput: "" };
     fieldSearch.value = "";
     selectedFiles.value = [];
 

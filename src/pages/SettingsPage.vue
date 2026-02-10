@@ -111,6 +111,10 @@ const t = useT();
             <input type="checkbox" v-model="settings.dashboardWidgets.overview" />
           </label>
           <label class="flex items-center justify-between text-sm">
+            <span>{{ t.widget_house_availability }}</span>
+            <input type="checkbox" v-model="settings.dashboardWidgets.house_availability" />
+          </label>
+          <label class="flex items-center justify-between text-sm">
             <span>{{ t.widget_latest_listings }}</span>
             <input type="checkbox" v-model="settings.dashboardWidgets.latest_listings" />
           </label>

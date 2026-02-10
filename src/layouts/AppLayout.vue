@@ -6,16 +6,21 @@
       </div>
     </aside>
 
-    <main class="h-screen overflow-y-auto overscroll-none pl-[132px]">
+    <main ref="mainEl" class="h-screen overflow-y-auto overscroll-none pl-[132px]">
       <div class="max-w-6xl ml-0 mr-auto px-6 py-10">
         <RouterView />
       </div>
     </main>
 
+    <BackToTopButton :target="mainEl" />
   </div>
 </template>
 
 <script setup>
+import { ref } from "vue";
 import { RouterView } from "vue-router";
 import SideRail from "../components/SideRail.vue";
+import BackToTopButton from "../components/BackToTopButton.vue";
+
+const mainEl = ref(null);
 </script>

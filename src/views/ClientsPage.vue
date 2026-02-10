@@ -106,6 +106,22 @@
           ></textarea>
         </div>
 
+        <label class="md:col-span-2 flex items-center gap-3 mt-1">
+          <input type="checkbox" v-model="alreadyInterested" />
+          <span class="text-sm text-white/60">{{ t.already_interested }}</span>
+        </label>
+
+        <div v-if="alreadyInterested" class="md:col-span-2">
+          <label class="text-sm text-white/60">{{ t.interested_house }}</label>
+          <select class="input mt-1" v-model="interestedHouseId" :disabled="housesLoading" :required="alreadyInterested">
+            <option value="">{{ t.select_house }}</option>
+            <option v-for="h in housesForSelect" :key="h.id" :value="h.id">
+              {{ h.address }}{{ h.city ? ` • ${h.city}` : "" }}
+            </option>
+          </select>
+          <p v-if="housesError" class="text-xs text-red-300 mt-2">{{ housesError }}</p>
+        </div>
+
         <div class="md:col-span-2 flex items-center gap-3 mt-2">
           <button class="btn" :disabled="creating">
             {{ creating ? t.saving : t.save }}
@@ -123,7 +139,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
@@ -139,6 +155,12 @@ const error = ref("");
 const q = ref("");
 const showAdd = ref(false);
 
+const alreadyInterested = ref(false);
+const interestedHouseId = ref("");
+const housesForSelect = ref([]);
+const housesLoading = ref(false);
+const housesError = ref("");
+
 const creating = ref(false);
 const createError = ref("");
 const createOk = ref(false);
@@ -151,6 +173,37 @@ const form = ref({
 });
 
 const t = useT();
+
+const loadHousesForSelect = async () => {
+  housesLoading.value = true;
+  housesError.value = "";
+
+  try {
+    const { data, error } = await supabase
+      .from("houses")
+      .select("id, address, city")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    housesForSelect.value = data || [];
+  } catch (e) {
+    housesError.value = e?.message || String(e);
+  } finally {
+    housesLoading.value = false;
+  }
+};
+
+watch(showAdd, (open) => {
+  if (!open) return;
+  alreadyInterested.value = false;
+  interestedHouseId.value = "";
+});
+
+watch(alreadyInterested, (v) => {
+  if (!v) return;
+  if (housesForSelect.value.length > 0) return;
+  loadHousesForSelect();
+});
 
 const formatDate = (iso) => {
   if (!iso) return "—";
@@ -216,7 +269,23 @@ const createClient = async () => {
 
     await logActivity({ type: "create", entity: "client", entity_id: clientRow.id, label: payload.full_name });
 
+    if (alreadyInterested.value) {
+      if (!interestedHouseId.value) {
+        throw new Error(t.value.select_house);
+      }
+
+      const { error: matchErr } = await supabase.from("house_matches").upsert({
+        client_id: clientRow.id,
+        house_id: interestedHouseId.value,
+        status: "interested",
+        source: "manual",
+      });
+      if (matchErr) throw matchErr;
+    }
+
     form.value = { full_name: "", phone: "", email: "", notes: "" };
+    alreadyInterested.value = false;
+    interestedHouseId.value = "";
     await load();
 
     createOk.value = true;
