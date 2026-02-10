@@ -81,6 +81,23 @@
     @apply text-xs px-2 py-1 rounded-full bg-white/[0.06] border border-white/10;
   }
 
+  /* Base modal styling. Theme-specific overrides live below. */
+  .modal-backdrop {
+    @apply bg-black/60 backdrop-blur-sm;
+  }
+
+  .modal-backdrop.modal-backdrop-strong {
+    @apply bg-black/70 backdrop-blur-md;
+  }
+
+  .modal-panel {
+    @apply border border-white/10 bg-black/70 backdrop-blur-lg;
+  }
+
+  .modal-panel.modal-panel-strong {
+    @apply bg-black/85 backdrop-blur-xl;
+  }
+
   .back-to-top {
     position: fixed;
     right: 1.5rem;
@@ -359,6 +376,28 @@ html.theme-plain body {
   color: #000000;
 }
 
+.theme-plain .modal-panel.modal-panel-strong {
+  background: #ffffff;
+}
+
+.light .modal-backdrop {
+  background: rgba(15, 15, 15, 0.28);
+}
+
+.light .modal-backdrop.modal-backdrop-strong {
+  background: rgba(15, 15, 15, 0.34);
+}
+
+.light .modal-panel {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(15, 15, 15, 0.1);
+  color: #0f0f0f;
+}
+
+.light .modal-panel.modal-panel-strong {
+  background: rgba(255, 255, 255, 0.97);
+}
+
 .theme-plain .ai-matchup-list {
   background: #ffffff;
   border-color: #e5e5e5;
@@ -371,11 +410,20 @@ html.theme-plain body {
 
 .theme-glass .modal-panel {
   border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.theme-glass .modal-panel.modal-panel-strong {
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .theme-warm .modal-panel {
   border-color: rgba(255, 255, 255, 0.15);
   background: rgba(12, 8, 6, 0.82);
+}
+
+.theme-warm .modal-panel.modal-panel-strong {
+  background: rgba(12, 8, 6, 0.88);
 }
 
 .theme-brutalist .modal-panel {

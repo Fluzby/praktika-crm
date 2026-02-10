@@ -119,14 +119,19 @@
     <teleport to="body">
       <div
         v-if="showAdd"
-        class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
         @keydown.esc="closeAdd"
         tabindex="-1"
       >
-        <div class="absolute inset-0" @click="closeAdd"></div>
+        <div
+          class="absolute inset-0 modal-backdrop"
+          :class="settings.aiModalStrong ? 'modal-backdrop-strong' : ''"
+          @click="closeAdd"
+        ></div>
 
         <div
-          class="relative bg-black/90 border border-white/10 rounded-2xl w-[90vw] max-w-5xl max-h-[90vh] flex flex-col"
+          class="relative modal-panel rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col"
+          :class="settings.aiModalStrong ? 'modal-panel-strong' : ''"
           role="dialog"
           aria-modal="true"
         >
