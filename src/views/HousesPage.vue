@@ -13,6 +13,39 @@
     </div>
 
     <div class="glass p-4">
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="input !w-auto min-w-[180px]" v-model="pipelineFilter">
+            <option value="">All property stages</option>
+            <option v-for="s in HOUSE_PIPELINE" :key="s" :value="s">
+              {{ HOUSE_PIPELINE_LABELS[s] }}
+            </option>
+          </select>
+          <select class="input !w-auto min-w-[180px]" v-model="availabilityFilter">
+            <option value="">All availability</option>
+            <option value="entering">{{ t.availability_entering }}</option>
+            <option value="available">{{ t.availability_available }}</option>
+            <option value="unavailable">{{ t.availability_unavailable }}</option>
+          </select>
+          <input class="input !w-auto min-w-[180px]" v-model.trim="newSavedViewName" placeholder="Saved view name" />
+          <button class="btn-ghost" type="button" @click="saveCurrentView" :disabled="!newSavedViewName">
+            Save View
+          </button>
+        </div>
+
+        <div v-if="savedViews.length" class="flex flex-wrap gap-2">
+          <button
+            v-for="view in savedViews"
+            :key="view.name"
+            type="button"
+            class="chip hover:bg-white/[0.08]"
+            @click="applySavedView(view)"
+          >
+            {{ view.name }}
+          </button>
+          <button class="btn-ghost text-xs" type="button" @click="clearFilters">Reset Filters</button>
+        </div>
+
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
           <input
@@ -28,6 +61,7 @@
             {{ filtered.length }} {{ t.results }}
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -102,6 +136,7 @@
               </div>
 
               <div v-if="(h.tags || []).length" class="mt-3 flex flex-wrap gap-2">
+                <span class="chip">{{ houseStageLabel(h.id) }}</span>
                 <span v-for="t in h.tags" :key="t" class="chip">
                   {{ t }}
                 </span>
@@ -321,6 +356,13 @@ import { logActivity } from "../lib/activity";
 import { useT } from "../lib/i18n";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { settings } from "../lib/settings";
+import {
+  HOUSE_PIPELINE,
+  HOUSE_PIPELINE_LABELS,
+  getHouseStage,
+  getSavedViews,
+  saveView,
+} from "../lib/crmEnhancements";
 
 const router = useRouter();
 
@@ -331,6 +373,9 @@ const loading = ref(false);
 const error = ref("");
 
 const q = ref("");
+const pipelineFilter = ref("");
+const availabilityFilter = ref("");
+const newSavedViewName = ref("");
 const showAdd = ref(false);
 
 const creating = ref(false);
@@ -347,6 +392,36 @@ const fieldSearch = ref("");
 const selectedFiles = ref([]);
 
 const t = useT();
+const savedViews = ref([]);
+
+const houseStageLabel = (houseId) => HOUSE_PIPELINE_LABELS[getHouseStage(houseId)] || "New Listing";
+
+const reloadSavedViews = () => {
+  savedViews.value = getSavedViews("houses");
+};
+
+const saveCurrentView = () => {
+  saveView("houses", {
+    name: newSavedViewName.value.trim(),
+    q: q.value,
+    pipelineFilter: pipelineFilter.value,
+    availabilityFilter: availabilityFilter.value,
+  });
+  newSavedViewName.value = "";
+  reloadSavedViews();
+};
+
+const applySavedView = (view) => {
+  q.value = view.q || "";
+  pipelineFilter.value = view.pipelineFilter || "";
+  availabilityFilter.value = view.availabilityFilter || "";
+};
+
+const clearFilters = () => {
+  q.value = "";
+  pipelineFilter.value = "";
+  availabilityFilter.value = "";
+};
 
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
@@ -502,6 +577,8 @@ const filtered = computed(() => {
   if (!term) return houses.value;
 
   return houses.value.filter((h) => {
+    if (availabilityFilter.value && (h.availability || "entering") !== availabilityFilter.value) return false;
+    if (pipelineFilter.value && getHouseStage(h.id) !== pipelineFilter.value) return false;
     const hay = [
       h.address,
       h.city,
@@ -620,4 +697,5 @@ const createHouseAndClose = async () => {
 };
 
 onMounted(load);
+onMounted(reloadSavedViews);
 </script>

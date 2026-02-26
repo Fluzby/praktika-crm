@@ -93,8 +93,16 @@
                 </button>
               </div>
 
+              <div v-else-if="entitySearchLoading" class="shell-search-empty">
+                Loading records...
+              </div>
+
               <div v-else class="shell-search-empty">
                 No matches for "{{ searchQuery }}"
+              </div>
+
+              <div v-if="entitySearchError" class="shell-search-empty border-t border-white/10">
+                {{ entitySearchError }}
               </div>
             </div>
           </div>
@@ -118,6 +126,7 @@ import { RouterView } from "vue-router";
 import { useRoute, useRouter } from "vue-router";
 import SideRail from "../components/SideRail.vue";
 import BackToTopButton from "../components/BackToTopButton.vue";
+import { supabase } from "../lib/supabase";
 
 const mainEl = ref(null);
 const route = useRoute();
@@ -128,6 +137,10 @@ const mobileSidebarOpen = ref(false);
 const searchOpen = ref(false);
 const searchQuery = ref("");
 const searchInputEl = ref(null);
+const entitySearchLoaded = ref(false);
+const entitySearchLoading = ref(false);
+const entitySearchError = ref("");
+const entitySearchItems = ref([]);
 const SIDEBAR_STORAGE_KEY = "crm_sidebar_collapsed";
 
 onMounted(() => {
@@ -167,11 +180,57 @@ const searchItems = [
   { key: "language", label: "Language Settings", section: "Settings", path: "/settings", icon: "⎈", terms: "language locale translation english estonian" },
 ];
 
+const loadEntitySearchItems = async () => {
+  if (entitySearchLoaded.value || entitySearchLoading.value) return;
+  entitySearchLoading.value = true;
+  entitySearchError.value = "";
+  try {
+    const [clientsRes, housesRes] = await Promise.all([
+      supabase.from("clients").select("id, full_name, email, phone").order("created_at", { ascending: false }).limit(30),
+      supabase.from("houses").select("id, address, city").order("created_at", { ascending: false }).limit(30),
+    ]);
+
+    const rows = [];
+    if (!clientsRes.error) {
+      for (const c of clientsRes.data || []) {
+        rows.push({
+          key: `client-${c.id}`,
+          label: c.full_name || "Client",
+          section: "Client Record",
+          path: `/clients/${c.id}`,
+          icon: "◍",
+          terms: `client ${c.full_name || ""} ${c.email || ""} ${c.phone || ""}`,
+        });
+      }
+    }
+    if (!housesRes.error) {
+      for (const h of housesRes.data || []) {
+        rows.push({
+          key: `house-${h.id}`,
+          label: h.address || "Property",
+          section: h.city ? `Property • ${h.city}` : "Property Record",
+          path: `/houses/${h.id}`,
+          icon: "⌂",
+          terms: `house property listing ${h.address || ""} ${h.city || ""}`,
+        });
+      }
+    }
+
+    entitySearchItems.value = rows;
+    entitySearchLoaded.value = true;
+  } catch (e) {
+    entitySearchError.value = e?.message || String(e);
+  } finally {
+    entitySearchLoading.value = false;
+  }
+};
+
 const filteredSearchItems = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return searchItems;
+  const source = [...searchItems, ...entitySearchItems.value];
+  if (!q) return source;
 
-  return searchItems.filter((item) => {
+  return source.filter((item) => {
     const hay = `${item.label} ${item.section} ${item.path} ${item.terms}`.toLowerCase();
     return hay.includes(q);
   });
@@ -184,6 +243,7 @@ const closeSearch = () => {
 const toggleSearch = async () => {
   searchOpen.value = !searchOpen.value;
   if (!searchOpen.value) return;
+  loadEntitySearchItems();
   await nextTick();
   searchInputEl.value?.focus();
   searchInputEl.value?.select?.();

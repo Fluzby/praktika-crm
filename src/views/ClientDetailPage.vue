@@ -8,6 +8,10 @@
         <p class="text-sm text-white/60 mt-1">
           {{ t.client_record }}
         </p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <span class="chip">{{ clientPipelineLabel }}</span>
+          <span class="chip">Open tasks: {{ openClientTasks.length }}</span>
+        </div>
       </div>
 
       <div class="flex items-center gap-2">
@@ -82,7 +86,7 @@
 
         <div class="glass-soft p-4 mt-6">
           <div class="flex items-center justify-between mb-3">
-            <div class="font-semibold">{{ t.matched_houses }}</div>
+            <div class="font-semibold">Recommended Houses</div>
 
             <label class="text-xs text-white/60 flex items-center gap-2">
               <input type="checkbox" v-model="hideRejected" />
@@ -90,11 +94,17 @@
             </label>
           </div>
 
-          <div v-if="matchedLoading" class="text-white/60 text-sm">{{ t.loading }}</div>
+          <div v-if="matchedLoading || autoMatching" class="space-y-2">
+            <div class="text-white/60 text-sm">
+              {{ autoMatching ? "Finding suggested properties..." : t.loading }}
+            </div>
+            <div class="rounded-xl border border-white/10 p-3 animate-pulse bg-white/[0.02]"></div>
+            <div class="rounded-xl border border-white/10 p-3 animate-pulse bg-white/[0.02]"></div>
+          </div>
 
           <div v-else class="space-y-2">
             <div
-              v-for="m in (hideRejected ? matched.filter(x => x.status !== 'rejected') : matched)"
+              v-for="m in recommendedMatches"
               :key="m.house.id"
               class="rounded-xl border border-white/10 p-3 hover:bg-white/[0.03] transition"
             >
@@ -128,7 +138,51 @@
               </div>
             </div>
 
-            <div v-if="matched.length === 0" class="text-white/60 text-sm">
+            <div v-if="recommendedMatches.length === 0" class="text-white/60 text-sm">
+              No recommended houses yet.
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-soft p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-semibold">{{ t.matched_houses }}</div>
+            <div class="text-xs text-white/50">{{ visibleMatched.length }} total</div>
+          </div>
+
+          <div v-if="matchedLoading || autoMatching" class="text-white/60 text-sm">
+            {{ autoMatching ? "Refreshing matches..." : t.loading }}
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="m in visibleMatched"
+              :key="`all-${m.house.id}`"
+              class="rounded-xl border border-white/10 p-3 hover:bg-white/[0.03] transition"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 cursor-pointer" @click="$router.push(`/houses/${m.house.id}`)">
+                  <div class="font-medium truncate">{{ m.house.address }}</div>
+                  <div class="text-xs text-white/60 mt-1">
+                    {{ m.house.city || "—" }} • {{ m.house.rooms ?? "?" }} {{ t.rooms }} • €{{ m.house.price ?? "—" }}
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="m.ai_confidence != null"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                  >
+                    {{ m.ai_confidence }}%
+                  </span>
+                  <span class="text-xs px-2 py-0.5 rounded-full" :class="statusPill(m.status)">
+                    {{ statusLabel(m.status) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="visibleMatched.length === 0" class="text-white/60 text-sm">
               {{ t.no_matched_houses }}
             </div>
           </div>
@@ -168,6 +222,57 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
+        <div class="glass p-6">
+          <h2 class="text-sm font-semibold text-white/80 mb-3">Client Pipeline</h2>
+          <select class="input" v-model="clientStatus" @change="onClientStatusChange">
+            <option v-for="s in CLIENT_PIPELINE" :key="s" :value="s">
+              {{ CLIENT_PIPELINE_LABELS[s] }}
+            </option>
+          </select>
+          <p class="text-xs text-white/50 mt-2">Track lead progress across the deal cycle.</p>
+        </div>
+
+        <div class="glass-soft p-6">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-white/80">Follow-up Tasks</h2>
+            <span class="text-xs text-white/50">{{ openClientTasks.length }} open</span>
+          </div>
+
+          <div class="space-y-2 mb-3">
+            <input class="input" v-model.trim="newTaskTitle" placeholder="Add next action..." />
+            <input class="input" type="date" v-model="newTaskDueDate" />
+            <button class="btn w-full" type="button" @click="addClientTask" :disabled="!newTaskTitle">
+              Add Task
+            </button>
+          </div>
+
+          <div v-if="clientTasks.length === 0" class="text-xs text-white/60">No tasks yet.</div>
+          <div v-else class="space-y-2">
+            <div v-for="task in clientTasks" :key="task.id" class="rounded-xl border border-white/10 p-3">
+              <div class="flex items-start gap-2">
+                <input type="checkbox" :checked="task.done" @change="toggleClientTask(task.id)" class="mt-1" />
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm" :class="task.done ? 'line-through text-white/40' : ''">{{ task.title }}</div>
+                  <div class="text-xs text-white/50 mt-1">
+                    Due {{ task.dueDate || "unscheduled" }}
+                  </div>
+                </div>
+                <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeClientTask(task.id)">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-soft p-6">
+          <h2 class="text-sm font-semibold text-white/80 mb-3">Relationship Overview</h2>
+          <div class="grid grid-cols-1 gap-3 text-sm">
+            <div class="rounded-xl border border-white/10 p-3">
+              <div class="text-xs text-white/50">Interested</div>
+              <div class="text-lg font-semibold mt-1">{{ interestedMatchesCount }}</div>
+            </div>
+          </div>
+        </div>
+
         <div class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
             {{ t.metadata }}
@@ -188,10 +293,21 @@
             </div>
           </div>
         </div>
+
+        <div class="glass-soft p-6">
+          <h2 class="text-sm font-semibold text-white/80 mb-3">Timeline</h2>
+          <div v-if="timelineEntries.length === 0" class="text-xs text-white/60">No activity yet.</div>
+          <div v-else class="space-y-2">
+            <div v-for="item in timelineEntries" :key="item.key" class="rounded-xl border border-white/10 p-3">
+              <div class="text-sm text-white/80">{{ item.label }}</div>
+              <div class="text-xs text-white/45 mt-1">{{ item.when }}</div>
+            </div>
+          </div>
+        </div>
       </aside>
     </div>
 
-    <Modal :open="showMatches" :title="t.top_ai_matches" @close="showMatches=false">
+    <Modal :open="showMatches" title="Most Recommended" @close="showMatches=false">
       <div class="flex flex-col gap-3">
         <div v-if="matchesLoading" class="space-y-2">
           <div class="glass-soft h-16 animate-pulse"></div>
@@ -214,12 +330,12 @@
             :class="[
               'rounded-xl border p-4 transition',
               selectedIndex === i
-                ? 'border-emerald-400/60 bg-emerald-400/5'
-                : 'border-white/10 hover:bg-white/[0.03]'
+                ? 'border-emerald-400/60 bg-emerald-400/8'
+                : 'border-white/12 bg-white/[0.02] hover:bg-white/[0.05]'
             ]"
           >
             <div class="flex items-center justify-between gap-2">
-              <div class="font-medium truncate">
+              <div class="font-semibold text-white truncate">
                 {{ h.address }}
               </div>
 
@@ -244,13 +360,13 @@
               </div>
             </div>
 
-            <div class="text-xs text-white/60 mt-1">
+            <div class="text-xs text-white/75 mt-1">
               {{ h.city || "—" }} • {{ h.rooms ?? "?" }} {{ t.rooms }} • €{{ h.price ?? "—" }}
             </div>
 
             <div
               v-if="h.reason"
-              class="text-xs text-white/50 leading-relaxed mt-2"
+              class="text-sm text-white/80 leading-relaxed mt-2"
             >
               {{ h.reason }}
             </div>
@@ -326,13 +442,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { settings } from "../lib/settings";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 import { useT } from "../lib/i18n";
+import {
+  CLIENT_PIPELINE,
+  CLIENT_PIPELINE_LABELS,
+  addTask,
+  deleteTask,
+  getClientStatus,
+  getEntityLocalActivity,
+  getEntityTasks,
+  logLocalActivity,
+  setClientStatus,
+  toggleTask,
+} from "../lib/crmEnhancements";
 
 const route = useRoute();
 const router = useRouter();
@@ -354,12 +482,47 @@ const selectedIndex = ref(0);
 const matched = ref([]);
 const matchedLoading = ref(false);
 const hideRejected = ref(true);
+const autoMatching = ref(false);
+const activity = ref([]);
+const clientStatus = ref("new_lead");
+const newTaskTitle = ref("");
+const newTaskDueDate = ref("");
+const clientTasks = ref([]);
 
 const toastMsg = ref("");
 const toastType = ref("info");
 let toastTimer = null;
 
 const t = useT();
+
+const clientPipelineLabel = computed(() => CLIENT_PIPELINE_LABELS[clientStatus.value] || "New Lead");
+const openClientTasks = computed(() => clientTasks.value.filter((x) => !x.done));
+const interestedMatchesCount = computed(() => matched.value.filter((x) => x.status === "interested").length);
+const visibleMatched = computed(() =>
+  hideRejected.value ? matched.value.filter((x) => x.status !== "rejected") : matched.value
+);
+const recommendedMatches = computed(() =>
+  visibleMatched.value.filter((x) => x.source === "ai" || x.status === "suggested")
+);
+const timelineEntries = computed(() => {
+  const supa = (activity.value || []).map((a) => ({
+    key: `db-${a.id}`,
+    at: a.created_at,
+    label: [a.type, a.entity, a.label].filter(Boolean).join(" • "),
+  }));
+  const local = getEntityLocalActivity("client", id).map((a) => ({
+    key: `local-${a.id}`,
+    at: a.created_at,
+    label: a.label || a.message || a.type || "Activity",
+  }));
+  return [...supa, ...local]
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 14)
+    .map((x) => ({
+      ...x,
+      when: x.at ? new Date(x.at).toLocaleString() : "—",
+    }));
+});
 
 const toast = (msg, type = "info") => {
   toastMsg.value = msg;
@@ -394,6 +557,22 @@ const loadMatched = async () => {
   }
 };
 
+const loadActivity = async () => {
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("*")
+    .eq("entity", "client")
+    .eq("entity_id", id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (!error) activity.value = data || [];
+};
+
+const loadLocalCRMState = () => {
+  clientStatus.value = getClientStatus(id);
+  clientTasks.value = getEntityTasks("client", id);
+};
+
 const statusPill = (s) => {
   if (s === "interested") return "bg-emerald-500/15 text-emerald-200";
   if (s === "viewed") return "bg-fuchsia-500/15 text-fuchsia-200";
@@ -425,6 +604,63 @@ const setMatchStatus = async (houseId, status) => {
     return;
   }
   await loadMatched();
+  logLocalActivity({
+    entity: "client",
+    entity_id: id,
+    type: "match_status",
+    label: `Property match marked as ${status}`,
+  });
+};
+
+const onClientStatusChange = () => {
+  setClientStatus(id, clientStatus.value);
+  logLocalActivity({
+    entity: "client",
+    entity_id: id,
+    type: "pipeline",
+    label: `Client stage changed to ${CLIENT_PIPELINE_LABELS[clientStatus.value]}`,
+  });
+};
+
+const addClientTask = () => {
+  const row = addTask({
+    entityType: "client",
+    entityId: id,
+    title: newTaskTitle.value,
+    dueDate: newTaskDueDate.value || null,
+  });
+  logLocalActivity({
+    entity: "client",
+    entity_id: id,
+    type: "task",
+    label: `Task created: ${row.title}`,
+  });
+  newTaskTitle.value = "";
+  newTaskDueDate.value = "";
+  loadLocalCRMState();
+};
+
+const toggleClientTask = (taskId) => {
+  const task = toggleTask(taskId);
+  logLocalActivity({
+    entity: "client",
+    entity_id: id,
+    type: "task",
+    label: `Task ${task?.done ? "completed" : "reopened"}: ${task?.title || ""}`.trim(),
+  });
+  loadLocalCRMState();
+};
+
+const removeClientTask = (taskId) => {
+  const task = clientTasks.value.find((x) => x.id === taskId);
+  deleteTask(taskId);
+  logLocalActivity({
+    entity: "client",
+    entity_id: id,
+    type: "task",
+    label: `Task deleted: ${task?.title || "Task"}`,
+  });
+  loadLocalCRMState();
 };
 
 const load = async () => {
@@ -448,6 +684,7 @@ const load = async () => {
     max_rooms: data.max_rooms,
     preferred_tags_input: (data.preferred_tags || []).join(", "),
   };
+  loadLocalCRMState();
 };
 
 const openMatches = async (force = false) => {
@@ -506,6 +743,56 @@ const openMatches = async (force = false) => {
     matchesError.value = e?.message || String(e);
   } finally {
     matchesLoading.value = false;
+  }
+};
+
+const autoPopulateSuggestedMatches = async (force = false) => {
+  if (!client.value?.id) return;
+  autoMatching.value = true;
+
+  try {
+    const { data, error } = await supabase.functions.invoke("smart-match", {
+      body: { client_id: client.value.id, force, top_n: settings.aiTopN },
+    });
+    if (error) throw error;
+
+    const results = Array.isArray(data) ? data : [];
+    if (!results.length) return;
+
+    const ids = results
+      .map((r) => r.house_id)
+      .filter((v) => typeof v === "string" && v.length > 0);
+
+    if (!ids.length) return;
+
+    const { data: existing, error: existingErr } = await supabase
+      .from("house_matches")
+      .select("house_id, status")
+      .eq("client_id", client.value.id)
+      .in("house_id", ids);
+    if (existingErr) throw existingErr;
+
+    const existingByHouseId = new Map((existing || []).map((m) => [m.house_id, m.status]));
+
+    const rows = results.slice(0, settings.aiTopN ?? 5).map((r) => ({
+      client_id: client.value.id,
+      house_id: r.house_id,
+      source: "ai",
+      status: existingByHouseId.get(r.house_id) || "suggested",
+      ai_confidence: r.confidence ?? null,
+      ai_reason: r.reason ?? null,
+    }));
+
+    const { error: upsertErr } = await supabase
+      .from("house_matches")
+      .upsert(rows, { onConflict: "client_id,house_id" });
+    if (upsertErr) throw upsertErr;
+
+    await loadMatched();
+  } catch (e) {
+    console.error("autoPopulateSuggestedMatches error:", e);
+  } finally {
+    autoMatching.value = false;
   }
 };
 
@@ -683,6 +970,12 @@ const save = async () => {
   if (e) return (error.value = e.message);
 
   await logActivity({ type: "update", entity: "client", entity_id: id, label: edit.value.full_name });
+  logLocalActivity({
+    entity: "client",
+    entity_id: id,
+    type: "update",
+    label: `Client details updated (${edit.value.full_name})`,
+  });
 
   ok.value = true;
   setTimeout(() => (ok.value = false), 1200);
@@ -697,9 +990,18 @@ const remove = async () => {
 onMounted(async () => {
   await load();
   await loadMatched();
+  await loadActivity();
+
+  // Auto-run AI suggestions in the background and load them into the suggested area.
+  if (client.value?.id) {
+    await autoPopulateSuggestedMatches(false);
+  }
 
   const handler = (e) => {
-    if (e?.detail?.clientId === client.value?.id) loadMatched();
+    if (e?.detail?.clientId === client.value?.id) {
+      loadMatched();
+      loadActivity();
+    }
   };
   window.addEventListener("match-changed", handler);
   onBeforeUnmount(() => window.removeEventListener("match-changed", handler));

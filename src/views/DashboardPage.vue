@@ -187,6 +187,33 @@
         </div>
 
         <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
+          <div class="mb-5">
+            <div class="flex items-center justify-between">
+              <h2 class="font-semibold">Follow-ups</h2>
+              <span class="text-xs text-white/50">{{ taskSummary.totalOpen }} open</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-3 text-sm">
+              <div class="rounded-xl border border-red-500/20 bg-red-500/8 p-3">
+                <div class="text-xs text-white/50">Overdue</div>
+                <div class="font-semibold mt-1">{{ taskSummary.overdue }}</div>
+              </div>
+              <div class="rounded-xl border border-amber-500/20 bg-amber-500/8 p-3">
+                <div class="text-xs text-white/50">Today</div>
+                <div class="font-semibold mt-1">{{ taskSummary.today }}</div>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                <div class="text-xs text-white/50">Upcoming</div>
+                <div class="font-semibold mt-1">{{ taskSummary.upcoming }}</div>
+              </div>
+            </div>
+            <div v-if="taskSummary.recent.length" class="mt-3 space-y-2 text-xs">
+              <div v-for="task in taskSummary.recent" :key="task.id" class="rounded-lg border border-white/10 px-3 py-2">
+                <div class="truncate">{{ task.title }}</div>
+                <div class="text-white/45 mt-1">{{ task.dueDate || "No due date" }} • {{ task.entityType }}</div>
+              </div>
+            </div>
+          </div>
+
           <h2 class="font-semibold mb-3">{{ t.recent_activity }}</h2>
           <ul class="space-y-2 text-sm text-white/60">
             <li v-for="a in activity" :key="a.id" class="flex items-center justify-between gap-3">
@@ -469,6 +496,7 @@ import Modal from "../components/Modal.vue";
 import { useT } from "../lib/i18n";
 import { settings } from "../lib/settings";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
+import { getDashboardTasksSummary } from "../lib/crmEnhancements";
 
 const clientsCount = ref(null);
 const housesCount = ref(null);
@@ -477,6 +505,7 @@ const photosCount = ref(null);
 const recentClients = ref([]);
 const recentHouses = ref([]);
 const activity = ref([]);
+const taskSummary = ref({ overdue: 0, today: 0, upcoming: 0, totalOpen: 0, recent: [] });
 
 // KPI stats removed from dashboard
 
@@ -779,6 +808,7 @@ const load = async () => {
     recentClients.value = cRecent.data || [];
     recentHouses.value = hRecent.data || [];
     activity.value = a.data || [];
+    taskSummary.value = getDashboardTasksSummary();
 
     lastUpdated.value = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch (e) {

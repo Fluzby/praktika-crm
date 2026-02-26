@@ -13,6 +13,39 @@
     </div>
 
     <div class="glass p-4">
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="input !w-auto min-w-[180px]" v-model="statusFilter">
+            <option value="">All pipeline stages</option>
+            <option v-for="s in CLIENT_PIPELINE" :key="s" :value="s">
+              {{ CLIENT_PIPELINE_LABELS[s] }}
+            </option>
+          </select>
+          <input
+            class="input !w-auto min-w-[180px]"
+            v-model.trim="newSavedViewName"
+            placeholder="Saved view name"
+          />
+          <button class="btn-ghost" type="button" @click="saveCurrentView" :disabled="!newSavedViewName">
+            Save View
+          </button>
+        </div>
+
+        <div v-if="savedViews.length" class="flex flex-wrap gap-2">
+          <button
+            v-for="view in savedViews"
+            :key="view.name"
+            type="button"
+            class="chip hover:bg-white/[0.08]"
+            @click="applySavedView(view)"
+          >
+            {{ view.name }}
+          </button>
+          <button class="btn-ghost text-xs" type="button" @click="clearFilters">
+            Reset Filters
+          </button>
+        </div>
+
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
           <input
@@ -28,6 +61,7 @@
             {{ filtered.length }} {{ t.results }}
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -46,6 +80,9 @@
             <div class="min-w-0">
               <div class="font-semibold truncate">
                 {{ c.full_name }}
+              </div>
+              <div class="mt-2">
+                <span class="chip">{{ clientStageLabel(c.id) }}</span>
               </div>
 
               <div class="text-sm text-white/60 mt-1">
@@ -145,6 +182,13 @@ import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 import { useT } from "../lib/i18n";
+import {
+  CLIENT_PIPELINE,
+  CLIENT_PIPELINE_LABELS,
+  getClientStatus,
+  getSavedViews,
+  saveView,
+} from "../lib/crmEnhancements";
 
 const router = useRouter();
 
@@ -153,6 +197,8 @@ const loading = ref(false);
 const error = ref("");
 
 const q = ref("");
+const statusFilter = ref("");
+const newSavedViewName = ref("");
 const showAdd = ref(false);
 
 const alreadyInterested = ref(false);
@@ -173,6 +219,33 @@ const form = ref({
 });
 
 const t = useT();
+const savedViews = ref([]);
+
+const clientStageLabel = (clientId) => CLIENT_PIPELINE_LABELS[getClientStatus(clientId)] || "New Lead";
+
+const reloadSavedViews = () => {
+  savedViews.value = getSavedViews("clients");
+};
+
+const saveCurrentView = () => {
+  saveView("clients", {
+    name: newSavedViewName.value.trim(),
+    q: q.value,
+    statusFilter: statusFilter.value,
+  });
+  newSavedViewName.value = "";
+  reloadSavedViews();
+};
+
+const applySavedView = (view) => {
+  q.value = view.q || "";
+  statusFilter.value = view.statusFilter || "";
+};
+
+const clearFilters = () => {
+  q.value = "";
+  statusFilter.value = "";
+};
 
 const loadHousesForSelect = async () => {
   housesLoading.value = true;
@@ -218,6 +291,8 @@ const filtered = computed(() => {
   if (!term) return clients.value;
 
   return clients.value.filter((c) => {
+    const stage = getClientStatus(c.id);
+    if (statusFilter.value && stage !== statusFilter.value) return false;
     const hay = [
       c.full_name,
       c.phone,
@@ -303,4 +378,5 @@ const createClientAndClose = async () => {
 };
 
 onMounted(load);
+onMounted(reloadSavedViews);
 </script>

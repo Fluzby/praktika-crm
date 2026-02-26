@@ -18,6 +18,7 @@
             <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(house.availability) }"></span>
             <span>{{ availabilityLabel(house.availability) }}</span>
           </span>
+          <span class="chip ml-2">{{ houseStageLabel }}</span>
         </div>
       </div>
 
@@ -265,15 +266,24 @@
             <h2 class="text-sm font-semibold text-white/80">
               {{ t.xlsx_fields }}
             </h2>
-            <button class="btn-ghost" type="button" @click="showAllInfo = !showAllInfo">
-              {{ showAllInfo ? t.hide_all_info : t.show_all_info }}
-            </button>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-white/60 flex items-center gap-2">
+                <input type="checkbox" v-model="hideEmptyXlsxFields" />
+                Hide empty fields
+              </label>
+              <button class="btn-ghost" type="button" @click="showAllInfo = !showAllInfo">
+                {{ showAllInfo ? t.hide_all_info : t.show_all_info }}
+              </button>
+            </div>
           </div>
 
           <div class="space-y-3">
+            <div v-if="xlsxDisplayGroups.length === 0" class="text-sm text-white/60">
+              No XLSX fields with values to display.
+            </div>
             <details
-              v-for="(group, groupKey) in HOUSE_FIELD_GROUPS"
-              :key="groupKey"
+              v-for="group in xlsxDisplayGroups"
+              :key="group.key"
               class="rounded-xl border border-white/10 bg-black/30 p-4"
               :open="showAllInfo"
             >
@@ -300,6 +310,43 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
+        <div class="glass p-6">
+          <h2 class="text-sm font-semibold text-white/80 mb-3">Property Pipeline</h2>
+          <select class="input" v-model="houseStage" @change="onHouseStageChange">
+            <option v-for="s in HOUSE_PIPELINE" :key="s" :value="s">
+              {{ HOUSE_PIPELINE_LABELS[s] }}
+            </option>
+          </select>
+          <p class="text-xs text-white/50 mt-2">Internal deal progress for this property.</p>
+        </div>
+
+        <div class="glass-soft p-6">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-white/80">Follow-up Tasks</h2>
+            <span class="text-xs text-white/50">{{ openHouseTasks.length }} open</span>
+          </div>
+          <div class="space-y-2 mb-3">
+            <input class="input" v-model.trim="newTaskTitle" placeholder="Add property task..." />
+            <input class="input" type="date" v-model="newTaskDueDate" />
+            <button class="btn w-full" type="button" @click="addHouseTask" :disabled="!newTaskTitle">
+              Add Task
+            </button>
+          </div>
+          <div v-if="houseTasks.length === 0" class="text-xs text-white/60">No tasks yet.</div>
+          <div v-else class="space-y-2">
+            <div v-for="task in houseTasks" :key="task.id" class="rounded-xl border border-white/10 p-3">
+              <div class="flex items-start gap-2">
+                <input type="checkbox" :checked="task.done" @change="toggleHouseTask(task.id)" class="mt-1" />
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm" :class="task.done ? 'line-through text-white/40' : ''">{{ task.title }}</div>
+                  <div class="text-xs text-white/50 mt-1">Due {{ task.dueDate || "unscheduled" }}</div>
+                </div>
+                <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeHouseTask(task.id)">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="glass p-6">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-white/80">
@@ -413,7 +460,7 @@
             </select>
 
             <button
-              class="btn-primary"
+              class="btn"
               @click="addManualMatch"
               :disabled="!selectedClientId"
             >
@@ -425,16 +472,14 @@
         <div class="glass-soft p-4">
           <div class="font-semibold mb-3">{{ t.activity }}</div>
 
-          <div v-if="!activity.length" class="text-xs text-white/60">
+          <div v-if="!timelineEntries.length" class="text-xs text-white/60">
             {{ t.no_activity }}
           </div>
 
           <div v-else class="space-y-2 text-xs">
-            <div v-for="a in activity" :key="a.id">
-              <span class="text-white/70">{{ a.message }}</span>
-              <span class="text-white/40 ml-2">
-                {{ new Date(a.created_at).toLocaleString() }}
-              </span>
+            <div v-for="a in timelineEntries" :key="a.key">
+              <span class="text-white/70">{{ a.label }}</span>
+              <span class="text-white/40 ml-2">{{ a.when }}</span>
             </div>
           </div>
         </div>
@@ -454,6 +499,18 @@ import { useT } from "../lib/i18n";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { formatDate, formatEuro, formatEuro2, formatBool } from "@/lib/formatters";
 import { settings } from "../lib/settings";
+import {
+  HOUSE_PIPELINE,
+  HOUSE_PIPELINE_LABELS,
+  addTask,
+  deleteTask,
+  getEntityLocalActivity,
+  getEntityTasks,
+  getHouseStage,
+  logLocalActivity,
+  setHouseStage,
+  toggleTask,
+} from "../lib/crmEnhancements";
 
 const route = useRoute();
 const router = useRouter();
@@ -469,11 +526,34 @@ const matchedClients = ref([]);
 const allClients = ref([]);
 const selectedClientId = ref(null);
 const activity = ref([]);
+const houseStage = ref("new_listing");
+const houseTasks = ref([]);
+const newTaskTitle = ref("");
+const newTaskDueDate = ref("");
 const rawDraft = ref({});
 const isEditing = ref(false);
 const showAllInfo = ref(false);
+const hideEmptyXlsxFields = ref(true);
 
 const t = useT();
+const houseStageLabel = computed(() => HOUSE_PIPELINE_LABELS[houseStage.value] || "New Listing");
+const openHouseTasks = computed(() => houseTasks.value.filter((x) => !x.done));
+const timelineEntries = computed(() => {
+  const db = (activity.value || []).map((a) => ({
+    key: `db-${a.id}`,
+    at: a.created_at,
+    label: a.message || [a.type, a.entity, a.label].filter(Boolean).join(" • "),
+  }));
+  const local = getEntityLocalActivity("house", id).map((a) => ({
+    key: `local-${a.id}`,
+    at: a.created_at,
+    label: a.label || a.message || a.type || "Activity",
+  }));
+  return [...db, ...local]
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 16)
+    .map((x) => ({ ...x, when: x.at ? new Date(x.at).toLocaleString() : "—" }));
+});
 
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
@@ -501,11 +581,33 @@ const parseTags = (s) =>
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
 
+const humanizeEnumLikeValue = (value) => {
+  if (typeof value !== "string") return value;
+  const raw = value.trim();
+  if (!raw) return raw;
+
+  // Convert values like "types.heatings.TSENTRAALNE_GAASIGA" into readable text.
+  const token = raw.startsWith("types.") ? raw.split(".").pop() || raw : raw;
+  if (!/^[A-Z0-9_]+$/.test(token)) return raw;
+
+  return token
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 const renderValue = (field, raw) => {
   const v = raw?.[field.key];
 
   if (v === null || v === undefined || v === "") return "—";
-  if (Array.isArray(v)) return v.filter((x) => x != null && x !== "").join(", ") || "—";
+  if (Array.isArray(v)) {
+    const arr = v
+      .filter((x) => x != null && x !== "")
+      .map((x) => (typeof x === "string" ? humanizeEnumLikeValue(x) : x));
+    return arr.join(", ") || "—";
+  }
   if (typeof v === "object") {
     try {
       return JSON.stringify(v);
@@ -518,8 +620,28 @@ const renderValue = (field, raw) => {
   if (field.type === "currency") return formatEuro(v);
   if (field.type === "currency2") return formatEuro2(v);
   if (field.type === "boolean") return formatBool(v);
-  return String(v);
+  return typeof v === "string" ? humanizeEnumLikeValue(v) : String(v);
 };
+
+const hasRawValue = (field, raw) => {
+  const v = raw?.[field.key];
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string") return v.trim() !== "";
+  if (Array.isArray(v)) return v.some((x) => x != null && String(x).trim() !== "");
+  return true;
+};
+
+const xlsxDisplayGroups = computed(() => {
+  const groups = Object.entries(HOUSE_FIELD_GROUPS).map(([key, group]) => {
+    const fields = hideEmptyXlsxFields.value
+      ? group.fields.filter((field) => hasRawValue(field, house.value?.raw_data))
+      : group.fields;
+
+    return { key, ...group, fields };
+  });
+
+  return groups.filter((g) => g.fields.length > 0);
+});
 
 const statusLabel = (s) => {
   const map = {
@@ -574,6 +696,11 @@ const loadMatchedClients = async () => {
   if (!error) matchedClients.value = data || [];
 };
 
+const loadLocalCRMState = () => {
+  houseStage.value = getHouseStage(id);
+  houseTasks.value = getEntityTasks("house", id);
+};
+
 const loadAllClients = async () => {
   const { data } = await supabase
     .from("clients")
@@ -592,6 +719,12 @@ const addManualMatch = async () => {
     source: "manual",
   });
 
+  logLocalActivity({
+    entity: "house",
+    entity_id: id,
+    type: "match",
+    label: "Client linked to property",
+  });
   selectedClientId.value = null;
   await loadMatchedClients();
 };
@@ -608,6 +741,13 @@ const updateMatchStatus = async (m) => {
     entity_id: house.value.id,
     message: `${t.value.client_marked_as} ${statusLabel(m.status)}`,
   });
+  logLocalActivity({
+    entity: "house",
+    entity_id: id,
+    type: "match_status",
+    label: `Client match marked as ${statusLabel(m.status)}`,
+  });
+  await loadActivity();
 };
 
 const loadActivity = async () => {
@@ -675,6 +815,58 @@ const load = async () => {
 
   await loadMatchedClients();
   await loadActivity();
+  loadLocalCRMState();
+};
+
+const onHouseStageChange = () => {
+  setHouseStage(id, houseStage.value);
+  logLocalActivity({
+    entity: "house",
+    entity_id: id,
+    type: "pipeline",
+    label: `Property stage changed to ${HOUSE_PIPELINE_LABELS[houseStage.value]}`,
+  });
+};
+
+const addHouseTask = () => {
+  const row = addTask({
+    entityType: "house",
+    entityId: id,
+    title: newTaskTitle.value,
+    dueDate: newTaskDueDate.value || null,
+  });
+  logLocalActivity({
+    entity: "house",
+    entity_id: id,
+    type: "task",
+    label: `Task created: ${row.title}`,
+  });
+  newTaskTitle.value = "";
+  newTaskDueDate.value = "";
+  loadLocalCRMState();
+};
+
+const toggleHouseTask = (taskId) => {
+  const task = toggleTask(taskId);
+  logLocalActivity({
+    entity: "house",
+    entity_id: id,
+    type: "task",
+    label: `Task ${task?.done ? "completed" : "reopened"}: ${task?.title || ""}`.trim(),
+  });
+  loadLocalCRMState();
+};
+
+const removeHouseTask = (taskId) => {
+  const task = houseTasks.value.find((x) => x.id === taskId);
+  deleteTask(taskId);
+  logLocalActivity({
+    entity: "house",
+    entity_id: id,
+    type: "task",
+    label: `Task deleted: ${task?.title || "Task"}`,
+  });
+  loadLocalCRMState();
 };
 
 const startEdit = () => {
@@ -720,6 +912,12 @@ const saveHouse = async () => {
 
     await load();
     isEditing.value = false;
+    logLocalActivity({
+      entity: "house",
+      entity_id: id,
+      type: "update",
+      label: `Property updated: ${edit.value.address}`,
+    });
   } catch (e) {
     err.value = e?.message || String(e);
   } finally {
