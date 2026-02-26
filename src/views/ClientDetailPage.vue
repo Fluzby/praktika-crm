@@ -373,7 +373,7 @@
 
             <div class="flex justify-end mt-3 gap-2">
               <button
-                class="text-xs px-3 py-1 rounded-md bg-red-500/15 text-red-200 hover:bg-red-500/25"
+                class="text-xs px-3 py-1 rounded-md border border-red-400/40 bg-red-500/18 text-red-100 hover:bg-red-500/28"
                 @click.stop="rejectHouse(h)"
               >
                 {{ t.reject_hide }}
@@ -382,8 +382,8 @@
               <button
                 class="text-xs px-3 py-1 rounded-md"
                 :class="h._picked
-                  ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                  : 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'"
+                  ? 'border border-white/15 bg-white/10 text-white/60 cursor-not-allowed'
+                  : 'border border-emerald-300/40 bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30'"
                 :disabled="h._picked"
                 @click.stop="pickHouse(h)"
               >
@@ -391,7 +391,7 @@
               </button>
 
               <button
-                class="text-xs px-3 py-1 rounded-md bg-white/10 hover:bg-white/20"
+                class="text-xs px-3 py-1 rounded-md border border-white/15 bg-white/10 text-white hover:bg-white/20"
                 @click.stop="$router.push(`/houses/${h.id}`)"
               >
                 {{ t.view_house }}

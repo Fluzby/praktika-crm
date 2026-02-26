@@ -14,39 +14,7 @@
 
     <div class="glass p-4">
       <div class="flex flex-col gap-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <select class="input !w-auto min-w-[180px]" v-model="pipelineFilter">
-            <option value="">All property stages</option>
-            <option v-for="s in HOUSE_PIPELINE" :key="s" :value="s">
-              {{ HOUSE_PIPELINE_LABELS[s] }}
-            </option>
-          </select>
-          <select class="input !w-auto min-w-[180px]" v-model="availabilityFilter">
-            <option value="">All availability</option>
-            <option value="entering">{{ t.availability_entering }}</option>
-            <option value="available">{{ t.availability_available }}</option>
-            <option value="unavailable">{{ t.availability_unavailable }}</option>
-          </select>
-          <input class="input !w-auto min-w-[180px]" v-model.trim="newSavedViewName" placeholder="Saved view name" />
-          <button class="btn-ghost" type="button" @click="saveCurrentView" :disabled="!newSavedViewName">
-            Save View
-          </button>
-        </div>
-
-        <div v-if="savedViews.length" class="flex flex-wrap gap-2">
-          <button
-            v-for="view in savedViews"
-            :key="view.name"
-            type="button"
-            class="chip hover:bg-white/[0.08]"
-            @click="applySavedView(view)"
-          >
-            {{ view.name }}
-          </button>
-          <button class="btn-ghost text-xs" type="button" @click="clearFilters">Reset Filters</button>
-        </div>
-
-      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
           <input
             class="input"
@@ -69,86 +37,75 @@
       <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
 
-      <ul v-else class="space-y-3">
-        <li
-          v-for="h in filtered"
-          :key="h.id"
-          class="glass-soft p-4 hover:bg-white/[0.05] transition cursor-pointer"
-          @click="openHouse(h.id)"
-        >
-          <div class="flex gap-4">
-            <div class="w-28 h-20 rounded-xl overflow-hidden border border-white/10 bg-black/30 shrink-0">
-              <img
-                v-if="coverUrls[h.id]"
-                :src="coverUrls[h.id]"
-                class="w-full h-full object-cover"
-                :alt="t.house"
-              />
-              <div v-else class="w-full h-full grid place-items-center text-white/30 text-sm">
-                {{ t.no_photo }}
-              </div>
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="font-semibold truncate">
-                    {{ h.address }}
-                  </div>
-                  <div class="text-sm text-white/60 mt-1">
-                    {{ h.city || "—" }}
-                    <span class="mx-2 text-white/30">•</span>
-                    {{ h.rooms ?? "?" }} {{ t.rooms }}
-                    <span class="mx-2 text-white/30">•</span>
-                    €{{ h.price ?? "—" }}
-                    <span v-if="h.size_m2" class="mx-2 text-white/30">•</span>
-                    <span v-if="h.size_m2">{{ h.size_m2 }} m²</span>
-                  </div>
-                </div>
-
-                <div class="text-xs text-white/45 whitespace-nowrap">
-                  <div>{{ formatDate(h.created_at) }}</div>
-                  <div class="mt-2">
-                    <span
-                      class="chip inline-flex items-center gap-2 pr-7 relative"
-                      :style="availabilityChipStyle(h.availability)"
+      <div v-else class="glass-soft overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[1180px] text-sm">
+            <thead class="bg-white/[0.02] border-b border-white/10">
+              <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
+                <th class="px-4 py-3 font-medium">Address</th>
+                <th class="px-4 py-3 font-medium">City</th>
+                <th class="px-4 py-3 font-medium">Stage</th>
+                <th class="px-4 py-3 font-medium">Availability</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">Rooms</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">Size</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">Price</th>
+                <th class="px-4 py-3 font-medium">Tags</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="h in filtered"
+                :key="h.id"
+                class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer align-top"
+                @click="openHouse(h.id)"
+              >
+                <td class="px-4 py-3">
+                  <div class="font-semibold text-white truncate max-w-[260px]">{{ h.address }}</div>
+                </td>
+                <td class="px-4 py-3 text-white/75 whitespace-nowrap">{{ h.city || "—" }}</td>
+                <td class="px-4 py-3">
+                  <span class="chip whitespace-nowrap">{{ houseStageLabel(h.id) }}</span>
+                </td>
+                <td class="px-4 py-3" @click.stop>
+                  <span
+                    class="chip inline-flex items-center gap-2 pr-7 relative whitespace-nowrap"
+                    :style="availabilityChipStyle(h.availability)"
+                  >
+                    <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(h.availability) }"></span>
+                    <select
+                      class="bg-transparent appearance-none outline-none border-0 p-0 m-0 text-xs cursor-pointer"
+                      v-model="h.availability"
+                      @focus="h._prevAvailability = h.availability || 'entering'"
                       @click.stop
+                      @change.stop="updateAvailability(h)"
+                      :disabled="savingAvailability[h.id]"
                     >
-                      <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(h.availability) }"></span>
-                      <select
-                        class="bg-transparent appearance-none outline-none border-0 p-0 m-0 text-xs cursor-pointer"
-                        v-model="h.availability"
-                        @focus="h._prevAvailability = h.availability || 'entering'"
-                        @click.stop
-                        @change.stop="updateAvailability(h)"
-                        :disabled="savingAvailability[h.id]"
-                      >
-                        <option value="entering">{{ t.availability_entering }}</option>
-                        <option value="available">{{ t.availability_available }}</option>
-                        <option value="unavailable">{{ t.availability_unavailable }}</option>
-                      </select>
-                      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none">
-                        ▾
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
+                      <option value="entering">{{ t.availability_entering }}</option>
+                      <option value="available">{{ t.availability_available }}</option>
+                      <option value="unavailable">{{ t.availability_unavailable }}</option>
+                    </select>
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none">▾</span>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-white/75 tabular-nums whitespace-nowrap">{{ h.rooms ?? "—" }}</td>
+                <td class="px-4 py-3 text-white/75 tabular-nums whitespace-nowrap">{{ h.size_m2 ? `${h.size_m2} m²` : "—" }}</td>
+                <td class="px-4 py-3 text-white/85 tabular-nums whitespace-nowrap">€{{ h.price ?? "—" }}</td>
+                <td class="px-4 py-3 text-white/60">
+                  <div class="truncate max-w-[260px]">{{ (h.tags || []).join(", ") || "—" }}</div>
+                </td>
+                <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(h.created_at) }}</td>
+              </tr>
 
-              <div v-if="(h.tags || []).length" class="mt-3 flex flex-wrap gap-2">
-                <span class="chip">{{ houseStageLabel(h.id) }}</span>
-                <span v-for="t in h.tags" :key="t" class="chip">
-                  {{ t }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </li>
-
-        <li v-if="filtered.length === 0" class="text-white/60">
-          {{ t.no_houses_found }}
-        </li>
-      </ul>
+              <tr v-if="filtered.length === 0">
+                <td colspan="9" class="px-4 py-8 text-center text-white/60">
+                  {{ t.no_houses_found }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <teleport to="body">
@@ -356,26 +313,15 @@ import { logActivity } from "../lib/activity";
 import { useT } from "../lib/i18n";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { settings } from "../lib/settings";
-import {
-  HOUSE_PIPELINE,
-  HOUSE_PIPELINE_LABELS,
-  getHouseStage,
-  getSavedViews,
-  saveView,
-} from "../lib/crmEnhancements";
+import { HOUSE_PIPELINE_LABELS, getHouseStage } from "../lib/crmEnhancements";
 
 const router = useRouter();
 
 const houses = ref([]);
-const coverUrls = ref({});
-
 const loading = ref(false);
 const error = ref("");
 
 const q = ref("");
-const pipelineFilter = ref("");
-const availabilityFilter = ref("");
-const newSavedViewName = ref("");
 const showAdd = ref(false);
 
 const creating = ref(false);
@@ -392,36 +338,8 @@ const fieldSearch = ref("");
 const selectedFiles = ref([]);
 
 const t = useT();
-const savedViews = ref([]);
 
 const houseStageLabel = (houseId) => HOUSE_PIPELINE_LABELS[getHouseStage(houseId)] || "New Listing";
-
-const reloadSavedViews = () => {
-  savedViews.value = getSavedViews("houses");
-};
-
-const saveCurrentView = () => {
-  saveView("houses", {
-    name: newSavedViewName.value.trim(),
-    q: q.value,
-    pipelineFilter: pipelineFilter.value,
-    availabilityFilter: availabilityFilter.value,
-  });
-  newSavedViewName.value = "";
-  reloadSavedViews();
-};
-
-const applySavedView = (view) => {
-  q.value = view.q || "";
-  pipelineFilter.value = view.pipelineFilter || "";
-  availabilityFilter.value = view.availabilityFilter || "";
-};
-
-const clearFilters = () => {
-  q.value = "";
-  pipelineFilter.value = "";
-  availabilityFilter.value = "";
-};
 
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
@@ -561,15 +479,6 @@ const updateAvailability = async (h) => {
   }
 };
 
-const getSignedUrl = async (path) => {
-  const { data, error } = await supabase.storage
-    .from("house-photos")
-    .createSignedUrl(path, 60 * 60);
-
-  if (error) throw error;
-  return data.signedUrl;
-};
-
 const openHouse = (id) => router.push(`/houses/${id}`);
 
 const filtered = computed(() => {
@@ -577,8 +486,6 @@ const filtered = computed(() => {
   if (!term) return houses.value;
 
   return houses.value.filter((h) => {
-    if (availabilityFilter.value && (h.availability || "entering") !== availabilityFilter.value) return false;
-    if (pipelineFilter.value && getHouseStage(h.id) !== pipelineFilter.value) return false;
     const hay = [
       h.address,
       h.city,
@@ -599,27 +506,12 @@ const load = async () => {
   try {
     const { data, error: e } = await supabase
       .from("houses")
-      .select(`
-        *,
-        house_photos (
-          storage_path,
-          is_cover
-        )
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (e) throw e;
 
     houses.value = data || [];
-
-    const map = {};
-    for (const h of houses.value) {
-      const cover = h.house_photos?.find((p) => p.is_cover) || h.house_photos?.[0];
-      if (cover?.storage_path) {
-        map[h.id] = await getSignedUrl(cover.storage_path);
-      }
-    }
-    coverUrls.value = map;
   } catch (err) {
     error.value = err?.message || String(err);
   } finally {
@@ -697,5 +589,4 @@ const createHouseAndClose = async () => {
 };
 
 onMounted(load);
-onMounted(reloadSavedViews);
 </script>

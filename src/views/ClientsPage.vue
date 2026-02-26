@@ -21,26 +21,6 @@
               {{ CLIENT_PIPELINE_LABELS[s] }}
             </option>
           </select>
-          <input
-            class="input !w-auto min-w-[180px]"
-            v-model.trim="newSavedViewName"
-            placeholder="Saved view name"
-          />
-          <button class="btn-ghost" type="button" @click="saveCurrentView" :disabled="!newSavedViewName">
-            Save View
-          </button>
-        </div>
-
-        <div v-if="savedViews.length" class="flex flex-wrap gap-2">
-          <button
-            v-for="view in savedViews"
-            :key="view.name"
-            type="button"
-            class="chip hover:bg-white/[0.08]"
-            @click="applySavedView(view)"
-          >
-            {{ view.name }}
-          </button>
           <button class="btn-ghost text-xs" type="button" @click="clearFilters">
             Reset Filters
           </button>
@@ -69,46 +49,51 @@
       <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
 
-      <ul v-else class="space-y-3">
-        <li
-          v-for="c in filtered"
-          :key="c.id"
-          class="glass-soft p-4 hover:bg-white/[0.05] transition cursor-pointer"
-          @click="openClient(c.id)"
-        >
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <div class="font-semibold truncate">
-                {{ c.full_name }}
-              </div>
-              <div class="mt-2">
-                <span class="chip">{{ clientStageLabel(c.id) }}</span>
-              </div>
-
-              <div class="text-sm text-white/60 mt-1">
-                {{ c.phone || "—" }}
-                <span class="mx-2 text-white/30">•</span>
-                {{ c.email || "—" }}
-              </div>
-
-              <div
-                v-if="c.notes"
-                class="mt-2 text-sm text-white/50 line-clamp-2"
+      <div v-else class="glass-soft overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[860px] text-sm">
+            <thead class="bg-white/[0.02] border-b border-white/10">
+              <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
+                <th class="px-4 py-3 font-medium">Client</th>
+                <th class="px-4 py-3 font-medium">Pipeline</th>
+                <th class="px-4 py-3 font-medium">Phone</th>
+                <th class="px-4 py-3 font-medium">Email</th>
+                <th class="px-4 py-3 font-medium">Notes</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="c in filtered"
+                :key="c.id"
+                class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer"
+                @click="openClient(c.id)"
               >
-                {{ c.notes }}
-              </div>
-            </div>
+                <td class="px-4 py-3">
+                  <div class="font-semibold text-white truncate max-w-[240px]">{{ c.full_name }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="chip whitespace-nowrap">{{ clientStageLabel(c.id) }}</span>
+                </td>
+                <td class="px-4 py-3 text-white/75 whitespace-nowrap">{{ c.phone || "—" }}</td>
+                <td class="px-4 py-3 text-white/75">
+                  <div class="truncate max-w-[220px]">{{ c.email || "—" }}</div>
+                </td>
+                <td class="px-4 py-3 text-white/60">
+                  <div class="truncate max-w-[280px]">{{ c.notes || "—" }}</div>
+                </td>
+                <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(c.created_at) }}</td>
+              </tr>
 
-            <div class="text-xs text-white/45 whitespace-nowrap">
-              {{ formatDate(c.created_at) }}
-            </div>
-          </div>
-        </li>
-
-        <li v-if="filtered.length === 0" class="text-white/60">
-          {{ t.no_clients_found }}
-        </li>
-      </ul>
+              <tr v-if="filtered.length === 0">
+                <td colspan="6" class="px-4 py-8 text-center text-white/60">
+                  {{ t.no_clients_found }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <Modal
@@ -186,8 +171,6 @@ import {
   CLIENT_PIPELINE,
   CLIENT_PIPELINE_LABELS,
   getClientStatus,
-  getSavedViews,
-  saveView,
 } from "../lib/crmEnhancements";
 
 const router = useRouter();
@@ -198,7 +181,6 @@ const error = ref("");
 
 const q = ref("");
 const statusFilter = ref("");
-const newSavedViewName = ref("");
 const showAdd = ref(false);
 
 const alreadyInterested = ref(false);
@@ -219,28 +201,7 @@ const form = ref({
 });
 
 const t = useT();
-const savedViews = ref([]);
-
 const clientStageLabel = (clientId) => CLIENT_PIPELINE_LABELS[getClientStatus(clientId)] || "New Lead";
-
-const reloadSavedViews = () => {
-  savedViews.value = getSavedViews("clients");
-};
-
-const saveCurrentView = () => {
-  saveView("clients", {
-    name: newSavedViewName.value.trim(),
-    q: q.value,
-    statusFilter: statusFilter.value,
-  });
-  newSavedViewName.value = "";
-  reloadSavedViews();
-};
-
-const applySavedView = (view) => {
-  q.value = view.q || "";
-  statusFilter.value = view.statusFilter || "";
-};
 
 const clearFilters = () => {
   q.value = "";
@@ -378,5 +339,4 @@ const createClientAndClose = async () => {
 };
 
 onMounted(load);
-onMounted(reloadSavedViews);
 </script>
