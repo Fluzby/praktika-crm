@@ -1,14 +1,110 @@
 <template>
-  <div class="h-screen overflow-hidden">
-    <aside class="fixed left-6 top-6 bottom-6 w-[92px] z-50">
-      <div class="glass h-full px-3 py-4 flex flex-col items-center">
-        <SideRail />
-      </div>
+  <div class="app-shell">
+    <div
+      v-if="mobileSidebarOpen"
+      class="shell-mobile-backdrop"
+      @click="mobileSidebarOpen = false"
+    ></div>
+
+    <aside
+      class="shell-sidebar"
+      :class="[
+        sidebarCollapsed ? 'is-collapsed' : '',
+        mobileSidebarOpen ? 'is-mobile-open' : '',
+      ]"
+    >
+      <SideRail
+        :collapsed="sidebarCollapsed"
+        @toggle-collapse="toggleSidebar"
+        @navigate="mobileSidebarOpen = false"
+      />
     </aside>
 
-    <main ref="mainEl" class="h-screen overflow-y-auto overscroll-none pl-[132px]">
-      <div class="max-w-6xl ml-0 mr-auto px-6 py-10">
-        <RouterView />
+    <main ref="mainEl" class="shell-main-scroll">
+      <div class="shell-main-inner">
+        <header class="shell-topbar">
+          <div class="flex items-center gap-3 min-w-0">
+            <button
+              class="shell-icon-btn lg:hidden"
+              type="button"
+              @click="mobileSidebarOpen = true"
+              aria-label="Open navigation"
+              title="Open navigation"
+            >
+              ☰
+            </button>
+
+            <div class="min-w-0">
+              <div class="shell-breadcrumb">
+                <span>CRM</span>
+                <span class="shell-breadcrumb-sep">›</span>
+                <span>{{ pageMeta.section }}</span>
+                <template v-if="pageMeta.detail">
+                  <span class="shell-breadcrumb-sep">›</span>
+                  <span>{{ pageMeta.detail }}</span>
+                </template>
+              </div>
+              <div class="shell-page-title truncate">
+                {{ pageMeta.title }}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0 relative">
+            <button
+              class="shell-icon-btn hidden sm:grid"
+              type="button"
+              title="Search pages"
+              @click="toggleSearch"
+            >
+              ⌕
+            </button>
+
+            <div v-if="searchOpen" class="shell-search-popover">
+              <div class="shell-search-input-wrap">
+                <span class="shell-search-glyph">⌕</span>
+                <input
+                  ref="searchInputEl"
+                  v-model.trim="searchQuery"
+                  type="text"
+                  class="shell-search-input"
+                  placeholder="Find pages, tabs, settings..."
+                  @keydown.esc="closeSearch"
+                  @keydown.enter.prevent="openFirstSearchResult"
+                />
+              </div>
+
+              <div class="shell-search-results" v-if="filteredSearchItems.length">
+                <button
+                  v-for="item in filteredSearchItems"
+                  :key="item.key"
+                  type="button"
+                  class="shell-search-result"
+                  @click="goToSearchResult(item)"
+                >
+                  <span class="shell-search-result-main">
+                    <span class="shell-search-result-icon">{{ item.icon }}</span>
+                    <span class="min-w-0">
+                      <span class="shell-search-result-title">{{ item.label }}</span>
+                      <span class="shell-search-result-sub">{{ item.section }}</span>
+                    </span>
+                  </span>
+                  <span class="shell-search-result-path">{{ item.path }}</span>
+                </button>
+              </div>
+
+              <div v-else class="shell-search-empty">
+                No matches for "{{ searchQuery }}"
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section class="shell-route-stage">
+          <div class="shell-route-stage-inner">
+            <RouterView />
+          </div>
+        </section>
       </div>
     </main>
 
@@ -17,10 +113,133 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterView } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import SideRail from "../components/SideRail.vue";
 import BackToTopButton from "../components/BackToTopButton.vue";
 
 const mainEl = ref(null);
+const route = useRoute();
+const router = useRouter();
+
+const sidebarCollapsed = ref(false);
+const mobileSidebarOpen = ref(false);
+const searchOpen = ref(false);
+const searchQuery = ref("");
+const searchInputEl = ref(null);
+const SIDEBAR_STORAGE_KEY = "crm_sidebar_collapsed";
+
+onMounted(() => {
+  try {
+    sidebarCollapsed.value = localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+  } catch {
+    sidebarCollapsed.value = false;
+  }
+});
+
+watch(sidebarCollapsed, (v) => {
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, v ? "1" : "0");
+  } catch {
+    // Ignore storage failures (private mode, etc.)
+  }
+});
+
+watch(
+  () => route.fullPath,
+  () => {
+    mobileSidebarOpen.value = false;
+    searchOpen.value = false;
+  }
+);
+
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+};
+
+const searchItems = [
+  { key: "dashboard", label: "Dashboard", section: "Main", path: "/dashboard", icon: "▦", terms: "dashboard home overview stats widgets" },
+  { key: "houses", label: "Properties", section: "Main", path: "/houses", icon: "⌂", terms: "houses homes properties listings inventory objects" },
+  { key: "clients", label: "Clients", section: "Main", path: "/clients", icon: "◍", terms: "clients contacts people leads buyers sellers" },
+  { key: "settings", label: "Settings", section: "Main", path: "/settings", icon: "⚙", terms: "settings preferences theme language workspace config" },
+  { key: "theme", label: "Theme Settings", section: "Settings", path: "/settings", icon: "◐", terms: "theme dark light glass warm brutalist plain colors mode" },
+  { key: "language", label: "Language Settings", section: "Settings", path: "/settings", icon: "⎈", terms: "language locale translation english estonian" },
+];
+
+const filteredSearchItems = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) return searchItems;
+
+  return searchItems.filter((item) => {
+    const hay = `${item.label} ${item.section} ${item.path} ${item.terms}`.toLowerCase();
+    return hay.includes(q);
+  });
+});
+
+const closeSearch = () => {
+  searchOpen.value = false;
+};
+
+const toggleSearch = async () => {
+  searchOpen.value = !searchOpen.value;
+  if (!searchOpen.value) return;
+  await nextTick();
+  searchInputEl.value?.focus();
+  searchInputEl.value?.select?.();
+};
+
+const goToSearchResult = async (item) => {
+  searchOpen.value = false;
+  searchQuery.value = "";
+  if (route.path !== item.path) {
+    await router.push(item.path);
+  }
+};
+
+const openFirstSearchResult = () => {
+  const first = filteredSearchItems.value[0];
+  if (!first) return;
+  goToSearchResult(first);
+};
+
+const onWindowKeydown = (e) => {
+  const isMetaK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
+  if (!isMetaK) return;
+  e.preventDefault();
+  toggleSearch();
+};
+
+onMounted(() => {
+  window.addEventListener("keydown", onWindowKeydown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onWindowKeydown);
+});
+
+const pageMeta = computed(() => {
+  const path = route.path;
+
+  if (path.startsWith("/clients/")) {
+    return { section: "Clients", title: "Client Detail", detail: route.params.id };
+  }
+  if (path.startsWith("/houses/")) {
+    return { section: "Properties", title: "Property Detail", detail: route.params.id };
+  }
+  if (path === "/dashboard") {
+    return { section: "Dashboard", title: "Overview", detail: "" };
+  }
+  if (path === "/clients") {
+    return { section: "Clients", title: "Client Database", detail: "" };
+  }
+  if (path === "/houses") {
+    return { section: "Properties", title: "Property Inventory", detail: "" };
+  }
+  if (path === "/settings") {
+    return { section: "Settings", title: "Workspace Preferences", detail: "" };
+  }
+
+  return { section: "Workspace", title: "CRM", detail: "" };
+});
 </script>
