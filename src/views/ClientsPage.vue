@@ -1,32 +1,8 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-end justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight">{{ t.clients }}</h1>
-        <p class="text-white/60 mt-1">{{ t.clients_subtitle }}</p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button class="btn-ghost" @click="load" :disabled="loading">{{ t.refresh }}</button>
-        <button class="btn" @click="showAdd = true">+ {{ t.add }}</button>
-      </div>
-    </div>
-
     <div class="glass p-4">
       <div class="flex flex-col gap-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <select class="input !w-auto min-w-[180px]" v-model="statusFilter">
-            <option value="">All pipeline stages</option>
-            <option v-for="s in CLIENT_PIPELINE" :key="s" :value="s">
-              {{ CLIENT_PIPELINE_LABELS[s] }}
-            </option>
-          </select>
-          <button class="btn-ghost text-xs" type="button" @click="clearFilters">
-            Reset Filters
-          </button>
-        </div>
-
-      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
           <input
             class="input"
@@ -60,6 +36,7 @@
                 <th class="px-4 py-3 font-medium">Email</th>
                 <th class="px-4 py-3 font-medium">Notes</th>
                 <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -83,10 +60,18 @@
                   <div class="truncate max-w-[280px]">{{ c.notes || "—" }}</div>
                 </td>
                 <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(c.created_at) }}</td>
+                <td class="px-4 py-3 text-right" @click.stop>
+                  <RowActionsMenu
+                    :archived="!!c.is_archived"
+                    @share="onShareClient(c)"
+                    @archive="onArchiveClient(c)"
+                    @delete="onDeleteClient(c)"
+                  />
+                </td>
               </tr>
 
               <tr v-if="filtered.length === 0">
-                <td colspan="6" class="px-4 py-8 text-center text-white/60">
+                <td colspan="7" class="px-4 py-8 text-center text-white/60">
                   {{ t.no_clients_found }}
                 </td>
               </tr>
@@ -166,12 +151,14 @@ import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
+import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { useT } from "../lib/i18n";
 import {
-  CLIENT_PIPELINE,
   CLIENT_PIPELINE_LABELS,
   getClientStatus,
 } from "../lib/crmEnhancements";
+import { archiveEntity, shareEntity } from "../lib/entityActions";
+import { useTopbarActions } from "../lib/topbarActions";
 
 const router = useRouter();
 
@@ -180,7 +167,6 @@ const loading = ref(false);
 const error = ref("");
 
 const q = ref("");
-const statusFilter = ref("");
 const showAdd = ref(false);
 
 const alreadyInterested = ref(false);
@@ -203,10 +189,10 @@ const form = ref({
 const t = useT();
 const clientStageLabel = (clientId) => CLIENT_PIPELINE_LABELS[getClientStatus(clientId)] || "New Lead";
 
-const clearFilters = () => {
-  q.value = "";
-  statusFilter.value = "";
-};
+useTopbarActions(() => [
+  { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
+  { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true) },
+]);
 
 const loadHousesForSelect = async () => {
   housesLoading.value = true;
@@ -247,13 +233,40 @@ const formatDate = (iso) => {
 
 const openClient = (id) => router.push(`/clients/${id}`);
 
+const onShareClient = async (clientRow) => {
+  try {
+    await shareEntity({ entityType: "client", entityId: clientRow.id });
+    alert("Share link/info copied.");
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
+
+const onArchiveClient = async (clientRow) => {
+  try {
+    await archiveEntity({
+      entityType: "client",
+      entityId: clientRow.id,
+      archived: !!clientRow.is_archived,
+    });
+    await load();
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
+
+const onDeleteClient = async (clientRow) => {
+  if (!confirm(`Delete ${clientRow.full_name}?`)) return;
+  const { error: e } = await supabase.from("clients").delete().eq("id", clientRow.id);
+  if (e) return alert(e.message);
+  await load();
+};
+
 const filtered = computed(() => {
   const term = q.value.toLowerCase();
   if (!term) return clients.value;
 
   return clients.value.filter((c) => {
-    const stage = getClientStatus(c.id);
-    if (statusFilter.value && stage !== statusFilter.value) return false;
     const hay = [
       c.full_name,
       c.phone,
@@ -268,7 +281,7 @@ const filtered = computed(() => {
   });
 });
 
-const load = async () => {
+async function load() {
   loading.value = true;
   error.value = "";
 
@@ -276,6 +289,7 @@ const load = async () => {
     const { data, error: e } = await supabase
       .from("clients")
       .select("*")
+      .eq("is_archived", false)
       .order("created_at", { ascending: false });
 
     if (e) throw e;

@@ -1,17 +1,5 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-end justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight">{{ t.houses }}</h1>
-        <p class="text-white/60 mt-1">{{ t.houses_subtitle }}</p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button class="btn-ghost" @click="load" :disabled="loading">{{ t.refresh }}</button>
-        <button class="btn" @click="showAdd = true">+ {{ t.add }}</button>
-      </div>
-    </div>
-
     <div class="glass p-4">
       <div class="flex flex-col gap-3">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
@@ -30,6 +18,19 @@
           </div>
         </div>
       </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="k in keywordChips"
+            :key="k"
+            type="button"
+            class="chip"
+            :class="selectedKeywords.includes(k) ? '!bg-emerald-500/25 !border-emerald-400/60' : ''"
+            @click="toggleKeyword(k)"
+          >
+            {{ k }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -51,6 +52,7 @@
                 <th class="px-4 py-3 font-medium whitespace-nowrap">Price</th>
                 <th class="px-4 py-3 font-medium">Tags</th>
                 <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -95,10 +97,18 @@
                   <div class="truncate max-w-[260px]">{{ (h.tags || []).join(", ") || "—" }}</div>
                 </td>
                 <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(h.created_at) }}</td>
+                <td class="px-4 py-3 text-right" @click.stop>
+                  <RowActionsMenu
+                    :archived="!!h.is_archived"
+                    @share="onShareHouse(h)"
+                    @archive="onArchiveHouse(h)"
+                    @delete="onDeleteHouse(h)"
+                  />
+                </td>
               </tr>
 
               <tr v-if="filtered.length === 0">
-                <td colspan="9" class="px-4 py-8 text-center text-white/60">
+                <td colspan="10" class="px-4 py-8 text-center text-white/60">
                   {{ t.no_houses_found }}
                 </td>
               </tr>
@@ -311,9 +321,12 @@ import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import { useT } from "../lib/i18n";
+import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { settings } from "../lib/settings";
 import { HOUSE_PIPELINE_LABELS, getHouseStage } from "../lib/crmEnhancements";
+import { archiveEntity, shareEntity } from "../lib/entityActions";
+import { useTopbarActions } from "../lib/topbarActions";
 
 const router = useRouter();
 
@@ -322,6 +335,7 @@ const loading = ref(false);
 const error = ref("");
 
 const q = ref("");
+const selectedKeywords = ref([]);
 const showAdd = ref(false);
 
 const creating = ref(false);
@@ -339,7 +353,14 @@ const selectedFiles = ref([]);
 
 const t = useT();
 
+useTopbarActions(() => [
+  { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
+  { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true) },
+]);
+const keywordChips = ["new", "balcony", "terrace", "parking", "storage", "renovated", "city-center", "family"];
+
 const houseStageLabel = (houseId) => HOUSE_PIPELINE_LABELS[getHouseStage(houseId)] || "New Listing";
+let searchTimer = null;
 
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
@@ -480,34 +501,68 @@ const updateAvailability = async (h) => {
 };
 
 const openHouse = (id) => router.push(`/houses/${id}`);
+const toggleKeyword = (k) => {
+  if (selectedKeywords.value.includes(k)) {
+    selectedKeywords.value = selectedKeywords.value.filter((x) => x !== k);
+  } else {
+    selectedKeywords.value = [...selectedKeywords.value, k];
+  }
+};
+
+const onShareHouse = async (houseRow) => {
+  try {
+    await shareEntity({ entityType: "house", entityId: houseRow.id });
+    alert("Share link/info copied.");
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
+
+const onArchiveHouse = async (houseRow) => {
+  try {
+    await archiveEntity({
+      entityType: "house",
+      entityId: houseRow.id,
+      archived: !!houseRow.is_archived,
+    });
+    await load();
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
+
+const onDeleteHouse = async (houseRow) => {
+  if (!confirm(`Delete ${houseRow.address}?`)) return;
+  const { error: e } = await supabase.from("houses").delete().eq("id", houseRow.id);
+  if (e) return alert(e.message);
+  await load();
+};
 
 const filtered = computed(() => {
-  const term = q.value.toLowerCase();
-  if (!term) return houses.value;
-
-  return houses.value.filter((h) => {
-    const hay = [
-      h.address,
-      h.city,
-      ...(h.tags || []),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return hay.includes(term);
-  });
+  return houses.value;
 });
 
-const load = async () => {
+async function load() {
   loading.value = true;
   error.value = "";
 
   try {
-    const { data, error: e } = await supabase
+    let query = supabase
       .from("houses")
       .select("*")
+      .eq("is_archived", false)
       .order("created_at", { ascending: false });
+
+    const term = q.value.trim();
+    if (term) {
+      const escaped = term.replace(/[%_]/g, "");
+      query = query.or(`address.ilike.%${escaped}%,city.ilike.%${escaped}%`);
+    }
+    if (selectedKeywords.value.length > 0) {
+      query = query.contains("tags", selectedKeywords.value);
+    }
+
+    const { data, error: e } = await query;
 
     if (e) throw e;
 
@@ -589,4 +644,10 @@ const createHouseAndClose = async () => {
 };
 
 onMounted(load);
+watch([q, selectedKeywords], () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    load();
+  }, 220);
+});
 </script>

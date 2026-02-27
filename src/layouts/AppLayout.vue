@@ -51,6 +51,24 @@
           </div>
 
           <div class="flex items-center gap-2 shrink-0 relative">
+            <template v-for="action in topbarActions" :key="action.key || action.label">
+              <RouterLink
+                v-if="action.to"
+                :to="action.to"
+                class="btn-ghost text-xs px-2.5 py-1.5 hidden sm:inline-flex"
+              >
+                {{ action.label }}
+              </RouterLink>
+              <button
+                v-else
+                class="btn-ghost text-xs px-2.5 py-1.5 hidden sm:inline-flex"
+                type="button"
+                :disabled="!!action.disabled"
+                @click="action.onClick?.()"
+              >
+                {{ action.label }}
+              </button>
+            </template>
             <button
               class="shell-icon-btn hidden sm:grid"
               type="button"
@@ -122,11 +140,12 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { RouterView } from "vue-router";
+import { RouterLink, RouterView } from "vue-router";
 import { useRoute, useRouter } from "vue-router";
 import SideRail from "../components/SideRail.vue";
 import BackToTopButton from "../components/BackToTopButton.vue";
 import { supabase } from "../lib/supabase";
+import { topbarActions } from "../lib/topbarActions";
 
 const mainEl = ref(null);
 const route = useRoute();
@@ -176,6 +195,8 @@ const searchItems = [
   { key: "houses", label: "Properties", section: "Main", path: "/houses", icon: "⌂", terms: "houses homes properties listings inventory objects" },
   { key: "clients", label: "Clients", section: "Main", path: "/clients", icon: "◍", terms: "clients contacts people leads buyers sellers" },
   { key: "settings", label: "Settings", section: "Main", path: "/settings", icon: "⚙", terms: "settings preferences theme language workspace config" },
+  { key: "calendar", label: "Calendar", section: "Main", path: "/calendar", icon: "◷", terms: "calendar schedule notes planner session" },
+  { key: "archive", label: "Archive", section: "Main", path: "/archive", icon: "🗄", terms: "archive archived restore deleted old records" },
   { key: "theme", label: "Theme Settings", section: "Settings", path: "/settings", icon: "◐", terms: "theme dark light glass warm brutalist plain colors mode" },
   { key: "language", label: "Language Settings", section: "Settings", path: "/settings", icon: "⎈", terms: "language locale translation english estonian" },
 ];
@@ -298,6 +319,12 @@ const pageMeta = computed(() => {
   }
   if (path === "/settings") {
     return { section: "Settings", title: "Workspace Preferences", detail: "" };
+  }
+  if (path === "/calendar") {
+    return { section: "Calendar", title: "Planner", detail: "" };
+  }
+  if (path === "/archive") {
+    return { section: "Archive", title: "Archived Records", detail: "" };
   }
 
   return { section: "Workspace", title: "CRM", detail: "" };

@@ -1,14 +1,14 @@
 <script setup>
 import { settings } from "../lib/settings";
 import { useT } from "../lib/i18n";
+import { useTopbarActions } from "../lib/topbarActions";
 
 const t = useT();
+useTopbarActions(() => []);
 </script>
 
 <template>
   <div class="space-y-4">
-    <div class="text-xl font-semibold">{{ t.settings }}</div>
-
     <div class="glass-soft p-4 space-y-4">
       <div>
         <div class="text-sm text-white/70">{{ t.language }}</div>

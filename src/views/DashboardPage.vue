@@ -1,20 +1,5 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-end justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight">{{ t.dashboard }}</h1>
-        <p class="text-white/60 mt-1">{{ t.dashboard_subtitle }}</p>
-      </div>
-
-      <div class="flex items-center gap-2 flex-wrap justify-end">
-        <button class="btn-ghost" @click="showAddHouse = true">+ {{ t.houses }}</button>
-        <button class="btn-ghost" @click="showAddClient = true">+ {{ t.clients }}</button>
-        <RouterLink to="/houses" class="btn-ghost">{{ t.open }} {{ t.houses }}</RouterLink>
-        <RouterLink to="/clients" class="btn-ghost">{{ t.open }} {{ t.clients }}</RouterLink>
-        <button class="btn-ghost" @click="load" :disabled="loading">{{ t.refresh }}</button>
-      </div>
-    </div>
-
     <div class="grid grid-cols-12 gap-6">
       <section class="col-span-12 lg:col-span-8 space-y-6">
         <div v-if="settings.dashboardWidgets.overview" class="glass p-6">
@@ -155,38 +140,85 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
-        <div v-if="settings.dashboardWidgets.recent_clients" class="glass p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-semibold">{{ t.recent_clients }}</h2>
-              <p class="text-sm text-white/60 mt-1">{{ t.recent_clients_subtitle }}</p>
+        <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
+          <div class="mb-5 relative">
+            <div class="flex items-center justify-between">
+              <h2 class="font-semibold">Calendar</h2>
+              <div class="flex items-center gap-2">
+                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardPrevMonth">←</button>
+                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardNextMonth">→</button>
+                <RouterLink to="/calendar" class="text-xs text-white/60 hover:text-white">Open →</RouterLink>
+              </div>
             </div>
-            <RouterLink to="/clients" class="text-sm text-white/60 hover:text-white">
-              {{ t.open }} →
-            </RouterLink>
+            <div class="text-xs text-white/50 mt-1">{{ dashboardMonthLabel }}</div>
+            <div class="grid grid-cols-7 gap-1 mt-3 text-[11px]">
+              <div v-for="d in calendarWeekdays" :key="`h-${d}`" class="text-white/40 text-center py-1">{{ d }}</div>
+              <button
+                v-for="day in dashboardCalendarCells"
+                :key="day.key"
+                class="h-10 rounded-md border text-center pt-1 relative"
+                :class="day.active
+                  ? day.isToday
+                    ? 'border-emerald-400/70 bg-emerald-500/14'
+                    : 'border-white/10 bg-white/[0.02]'
+                  : 'border-white/5 bg-white/[0.01] text-white/25'"
+                :style="dashboardDayStyle(day)"
+                @click="openDashboardDate(day)"
+                type="button"
+                :disabled="!day.active"
+              >
+                <div>{{ day.dayNum || "" }}</div>
+                <div v-if="day.events.length" class="absolute left-1/2 -translate-x-1/2 bottom-1 h-1.5 w-1.5 rounded-full bg-current opacity-80"></div>
+                <div v-if="day.taskCount" class="text-[10px] text-emerald-300 leading-none mt-0.5">•{{ day.taskCount }}</div>
+              </button>
+            </div>
+
+            <div
+              v-if="dashboardSelectedDate"
+              class="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-white/55">Selected: {{ dashboardSelectedDate }}</div>
+                <button class="btn-ghost text-xs" type="button" @click="dashboardSelectedDate = ''">Close</button>
+              </div>
+              <div class="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
+                <div
+                  v-for="event in dashboardSelectedItems.events"
+                  :key="`ev-${event.id}`"
+                  class="rounded-md border border-white/10 px-2 py-1.5"
+                  :style="dashboardDayStyle({ active: true, events: [event] })"
+                >
+                  <div class="font-medium">◆ {{ event.title }}</div>
+                  <div v-if="event.note" class="opacity-80 mt-0.5 whitespace-pre-wrap">{{ event.note }}</div>
+                </div>
+                <div
+                  v-for="task in dashboardSelectedItems.tasks"
+                  :key="`tk-${task.id}`"
+                  class="rounded-md border border-white/10 px-2 py-1.5"
+                >
+                  <div class="font-medium">• {{ task.title }}</div>
+                  <div class="opacity-70 flex items-center justify-between gap-2">
+                    <span>{{ task.entityType }}</span>
+                    <button
+                      v-if="task.entityId"
+                      class="btn-ghost text-[11px] px-2 py-1"
+                      type="button"
+                      @click="openTaskEntity(task)"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </div>
+                <div
+                  v-if="!dashboardSelectedItems.events.length && !dashboardSelectedItems.tasks.length"
+                  class="text-white/55"
+                >
+                  No items for this day.
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div v-if="loading" class="mt-5 text-white/60">{{ t.loading }}</div>
-
-          <ul v-else class="mt-5 space-y-2">
-            <li
-              v-for="c in recentClients"
-              :key="c.id"
-              class="rounded-xl border border-white/10 bg-black/30 p-4 hover:bg-white/[0.05] transition"
-            >
-              <div class="font-semibold">{{ c.full_name }}</div>
-              <div class="text-sm text-white/60 mt-1">
-                {{ c.phone || "—" }} • {{ c.email || "—" }}
-              </div>
-            </li>
-
-            <li v-if="recentClients.length === 0" class="text-white/60">
-              {{ t.no_clients_found }}
-            </li>
-          </ul>
-        </div>
-
-        <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
           <div class="mb-5">
             <div class="flex items-center justify-between">
               <h2 class="font-semibold">Follow-ups</h2>
@@ -225,6 +257,37 @@
               </span>
             </li>
             <li v-if="activity.length===0">{{ t.no_recent_activity }}</li>
+          </ul>
+        </div>
+
+        <div v-if="settings.dashboardWidgets.recent_clients" class="glass p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">{{ t.recent_clients }}</h2>
+              <p class="text-sm text-white/60 mt-1">{{ t.recent_clients_subtitle }}</p>
+            </div>
+            <RouterLink to="/clients" class="text-sm text-white/60 hover:text-white">
+              {{ t.open }} →
+            </RouterLink>
+          </div>
+
+          <div v-if="loading" class="mt-5 text-white/60">{{ t.loading }}</div>
+
+          <ul v-else class="mt-5 space-y-2">
+            <li
+              v-for="c in recentClients"
+              :key="c.id"
+              class="rounded-xl border border-white/10 bg-black/30 p-4 hover:bg-white/[0.05] transition"
+            >
+              <div class="font-semibold">{{ c.full_name }}</div>
+              <div class="text-sm text-white/60 mt-1">
+                {{ c.phone || "—" }} • {{ c.email || "—" }}
+              </div>
+            </li>
+
+            <li v-if="recentClients.length === 0" class="text-white/60">
+              {{ t.no_clients_found }}
+            </li>
           </ul>
         </div>
       </aside>
@@ -489,14 +552,15 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 import { useT } from "../lib/i18n";
 import { settings } from "../lib/settings";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
-import { getDashboardTasksSummary } from "../lib/crmEnhancements";
+import { loadTaskCalendarSummary } from "../lib/tasksBackend";
+import { useTopbarActions } from "../lib/topbarActions";
 
 const clientsCount = ref(null);
 const housesCount = ref(null);
@@ -506,6 +570,13 @@ const recentClients = ref([]);
 const recentHouses = ref([]);
 const activity = ref([]);
 const taskSummary = ref({ overdue: 0, today: 0, upcoming: 0, totalOpen: 0, recent: [] });
+const calendarWeekdays = ["M", "T", "W", "T", "F", "S", "S"];
+const CAL_EVENTS_KEY = "crm_calendar_events_v2";
+const CAL_EVENTS_LEGACY_KEY = "crm_calendar_events_v1";
+const dashboardViewYear = ref(new Date().getFullYear());
+const dashboardViewMonth = ref(new Date().getMonth());
+const dashboardSelectedDate = ref("");
+const dashboardEvents = ref([]);
 
 // KPI stats removed from dashboard
 
@@ -552,6 +623,215 @@ const clientForm = ref({
 });
 
 const t = useT();
+const router = useRouter();
+
+useTopbarActions(() => [
+  { key: "add-house", label: `+ ${t.value.houses}`, onClick: () => (showAddHouse.value = true) },
+  { key: "add-client", label: `+ ${t.value.clients}`, onClick: () => (showAddClient.value = true) },
+  { key: "open-houses", label: `${t.value.open} ${t.value.houses}`, to: "/houses" },
+  { key: "open-clients", label: `${t.value.open} ${t.value.clients}`, to: "/clients" },
+  { key: "refresh", label: t.value.refresh, onClick: load, disabled: loading.value },
+]);
+
+const toDateKey = (d) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const dashboardMonthLabel = computed(() => {
+  const d = new Date(dashboardViewYear.value, dashboardViewMonth.value, 1);
+  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+});
+
+const parseDateParts = (dateKey) => {
+  const [yyyy, mm, dd] = String(dateKey).split("-").map(Number);
+  return { yyyy, mm, dd };
+};
+
+const isValidDate = (yyyy, mm, dd) => {
+  if (!yyyy || !mm || !dd) return false;
+  const d = new Date(yyyy, mm - 1, dd);
+  return d.getFullYear() === yyyy && d.getMonth() + 1 === mm && d.getDate() === dd;
+};
+
+const isValidDateKey = (dateKey) => {
+  const { yyyy, mm, dd } = parseDateParts(dateKey);
+  return isValidDate(yyyy, mm, dd);
+};
+
+const normalizeHexColor = (raw) => {
+  const color = String(raw || "").trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) return color.toLowerCase();
+  return "#22c55e";
+};
+
+const sanitizeDashboardEvents = (list) =>
+  (list || [])
+    .filter((item) => item && item.id && item.title && item.date)
+    .map((item) => ({
+      ...item,
+      title: String(item.title).trim(),
+      date: String(item.date),
+      note: item.note ? String(item.note) : "",
+      color: normalizeHexColor(item.color),
+      repeat: item.repeat === "yearly" ? "yearly" : "none",
+    }))
+    .filter((item) => item.title.length > 0 && isValidDateKey(item.date));
+
+const loadDashboardEvents = () => {
+  try {
+    const v2 = JSON.parse(localStorage.getItem(CAL_EVENTS_KEY) || "[]");
+    if (Array.isArray(v2) && v2.length) return sanitizeDashboardEvents(v2);
+  } catch {
+    // ignore
+  }
+
+  try {
+    const legacy = JSON.parse(localStorage.getItem(CAL_EVENTS_LEGACY_KEY) || "{}");
+    const migrated = [];
+    for (const [dateKey, rows] of Object.entries(legacy || {})) {
+      for (const row of rows || []) {
+        if (!row?.title) continue;
+        migrated.push({
+          id: row.id || `${Date.now()}-${Math.random()}`,
+          title: row.title,
+          date: dateKey,
+          note: row.note || "",
+          color: row.color,
+          repeat: "none",
+        });
+      }
+    }
+    return sanitizeDashboardEvents(migrated);
+  } catch {
+    return [];
+  }
+};
+
+const buildDashboardMonthEventsMap = (year, month) => {
+  const map = {};
+  for (const event of dashboardEvents.value) {
+    const { yyyy, mm, dd } = parseDateParts(event.date);
+    if (event.repeat === "yearly") {
+      if (mm !== month + 1 || !isValidDate(year, mm, dd)) continue;
+      const key = `${year}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(event);
+      continue;
+    }
+    if (yyyy !== year || mm !== month + 1) continue;
+    if (!map[event.date]) map[event.date] = [];
+    map[event.date].push(event);
+  }
+  return map;
+};
+
+const dashboardMonthEventsMap = computed(() =>
+  buildDashboardMonthEventsMap(dashboardViewYear.value, dashboardViewMonth.value)
+);
+
+const dashboardTaskMap = computed(() => {
+  const map = {};
+  for (const item of taskSummary.value.items || []) {
+    if (!item?.dueDate) continue;
+    const { yyyy, mm } = parseDateParts(item.dueDate);
+    if (yyyy !== dashboardViewYear.value || mm !== dashboardViewMonth.value + 1) continue;
+    if (!map[item.dueDate]) map[item.dueDate] = [];
+    map[item.dueDate].push(item);
+  }
+  return map;
+});
+
+const dashboardCalendarCells = computed(() => {
+  const y = dashboardViewYear.value;
+  const m = dashboardViewMonth.value;
+  const now = new Date();
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  const startWeekday = (first.getDay() + 6) % 7;
+  const totalCells = Math.ceil((startWeekday + last.getDate()) / 7) * 7;
+  const todayKey = toDateKey(now);
+
+  const cells = [];
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startWeekday + 1;
+    const active = dayNum >= 1 && dayNum <= last.getDate();
+    const dateKey = active ? toDateKey(new Date(y, m, dayNum)) : "";
+    const events = active ? (dashboardMonthEventsMap.value[dateKey] || []) : [];
+    const tasks = active ? (dashboardTaskMap.value[dateKey] || []) : [];
+    cells.push({
+      key: `dw-${i}`,
+      active,
+      dateKey,
+      dayNum: active ? dayNum : "",
+      isToday: active && dateKey === todayKey,
+      taskCount: tasks.length,
+      events,
+      tasks,
+    });
+  }
+  return cells;
+});
+
+const dashboardSelectedItems = computed(() => {
+  if (!dashboardSelectedDate.value) return { events: [], tasks: [] };
+  return {
+    events: dashboardMonthEventsMap.value[dashboardSelectedDate.value] || [],
+    tasks: dashboardTaskMap.value[dashboardSelectedDate.value] || [],
+  };
+});
+
+const hexToRgb = (color) => {
+  const hex = normalizeHexColor(color).replace("#", "");
+  const num = Number.parseInt(hex, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+};
+
+const dashboardDayStyle = (day) => {
+  if (!day?.active || !day.events?.length) return {};
+  const color = normalizeHexColor(day.events[0].color);
+  const { r, g, b } = hexToRgb(color);
+  return {
+    background: `rgba(${r}, ${g}, ${b}, 0.2)`,
+    borderColor: `rgba(${r}, ${g}, ${b}, 0.62)`,
+  };
+};
+
+const openDashboardDate = (day) => {
+  if (!day?.active) return;
+  dashboardSelectedDate.value = day.dateKey;
+};
+
+const openTaskEntity = (task) => {
+  if (!task?.entityId) return;
+  if (task.entityType === "house") {
+    router.push(`/houses/${task.entityId}`);
+    return;
+  }
+  if (task.entityType === "client") {
+    router.push(`/clients/${task.entityId}`);
+  }
+};
+
+const dashboardPrevMonth = () => {
+  if (dashboardViewMonth.value === 0) {
+    dashboardViewMonth.value = 11;
+    dashboardViewYear.value -= 1;
+  } else {
+    dashboardViewMonth.value -= 1;
+  }
+};
+
+const dashboardNextMonth = () => {
+  if (dashboardViewMonth.value === 11) {
+    dashboardViewMonth.value = 0;
+    dashboardViewYear.value += 1;
+  } else {
+    dashboardViewMonth.value += 1;
+  }
+};
 
 const loadClientHousesForSelect = async () => {
   clientHousesLoading.value = true;
@@ -746,13 +1026,13 @@ const filteredGroups = computed(() => {
   return result;
 });
 
-const load = async () => {
+async function load() {
   loading.value = true;
   error.value = "";
 
   try {
-    const cCount = await supabase.from("clients").select("*", { count: "exact", head: true });
-    const hCount = await supabase.from("houses").select("*", { count: "exact", head: true });
+    const cCount = await supabase.from("clients").select("*", { count: "exact", head: true }).eq("is_archived", false);
+    const hCount = await supabase.from("houses").select("*", { count: "exact", head: true }).eq("is_archived", false);
     const pCount = await supabase.from("house_photos").select("*", { count: "exact", head: true });
 
     if (cCount.error) throw cCount.error;
@@ -766,11 +1046,13 @@ const load = async () => {
     const aCount = await supabase
       .from("houses")
       .select("*", { count: "exact", head: true })
+      .eq("is_archived", false)
       .eq("availability", "available");
 
     const uCount = await supabase
       .from("houses")
       .select("*", { count: "exact", head: true })
+      .eq("is_archived", false)
       .eq("availability", "unavailable");
 
     // If the column doesn't exist yet, Supabase will error. Keep the widget graceful.
@@ -787,12 +1069,14 @@ const load = async () => {
     const cRecent = await supabase
       .from("clients")
       .select("id, full_name, phone, email, created_at")
+      .eq("is_archived", false)
       .order("created_at", { ascending: false })
       .limit(6);
 
     const hRecent = await supabase
       .from("houses")
       .select("id, address, city, price, rooms, availability, created_at")
+      .eq("is_archived", false)
       .order("created_at", { ascending: false })
       .limit(3);
 
@@ -808,7 +1092,8 @@ const load = async () => {
     recentClients.value = cRecent.data || [];
     recentHouses.value = hRecent.data || [];
     activity.value = a.data || [];
-    taskSummary.value = getDashboardTasksSummary();
+    taskSummary.value = await loadTaskCalendarSummary();
+    dashboardEvents.value = loadDashboardEvents();
 
     lastUpdated.value = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
@@ -944,6 +1229,7 @@ const createClientAndClose = async () => {
 };
 
 onMounted(() => {
+  dashboardEvents.value = loadDashboardEvents();
   load();
   const handler = () => {
     // Keep the dashboard fresh if matches change.

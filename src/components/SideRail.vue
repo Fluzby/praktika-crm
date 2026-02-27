@@ -32,6 +32,20 @@
         @click="handleNavigate"
       />
       <NavIcon
+        to="/calendar"
+        icon="◷"
+        label="Calendar"
+        :collapsed="collapsed"
+        @click="handleNavigate"
+      />
+      <NavIcon
+        to="/archive"
+        icon="🗄"
+        label="Archive"
+        :collapsed="collapsed"
+        @click="handleNavigate"
+      />
+      <NavIcon
         to="/settings"
         icon="⚙"
         :label="t.settings"

@@ -17,12 +17,12 @@
       <div class="flex items-center gap-2">
         <button class="btn-ghost" @click="load">{{ t.refresh }}</button>
         <button class="btn-ghost" @click="openMatches">{{ t.match_houses }}</button>
-        <button
-          class="px-4 py-2 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10"
-          @click="remove"
-        >
-          {{ t.delete }}
-        </button>
+        <RowActionsMenu
+          :archived="!!client?.is_archived"
+          @share="onShareClient"
+          @archive="onArchiveClient"
+          @delete="remove"
+        />
       </div>
     </div>
 
@@ -448,19 +448,23 @@ import { supabase } from "../lib/supabase";
 import { settings } from "../lib/settings";
 import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
+import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { useT } from "../lib/i18n";
 import {
   CLIENT_PIPELINE,
   CLIENT_PIPELINE_LABELS,
-  addTask,
-  deleteTask,
   getClientStatus,
   getEntityLocalActivity,
-  getEntityTasks,
   logLocalActivity,
   setClientStatus,
-  toggleTask,
 } from "../lib/crmEnhancements";
+import {
+  createEntityTask,
+  loadEntityTasks,
+  removeEntityTask,
+  setEntityTaskDone,
+} from "../lib/tasksBackend";
+import { archiveEntity, shareEntity } from "../lib/entityActions";
 
 const route = useRoute();
 const router = useRouter();
@@ -568,9 +572,13 @@ const loadActivity = async () => {
   if (!error) activity.value = data || [];
 };
 
-const loadLocalCRMState = () => {
+const loadLocalCRMState = async () => {
   clientStatus.value = getClientStatus(id);
-  clientTasks.value = getEntityTasks("client", id);
+  try {
+    clientTasks.value = await loadEntityTasks("client", id);
+  } catch {
+    clientTasks.value = [];
+  }
 };
 
 const statusPill = (s) => {
@@ -622,8 +630,8 @@ const onClientStatusChange = () => {
   });
 };
 
-const addClientTask = () => {
-  const row = addTask({
+const addClientTask = async () => {
+  const row = await createEntityTask({
     entityType: "client",
     entityId: id,
     title: newTaskTitle.value,
@@ -633,34 +641,35 @@ const addClientTask = () => {
     entity: "client",
     entity_id: id,
     type: "task",
-    label: `Task created: ${row.title}`,
+    label: `Task created: ${row?.title || newTaskTitle.value}`,
   });
   newTaskTitle.value = "";
   newTaskDueDate.value = "";
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
-const toggleClientTask = (taskId) => {
-  const task = toggleTask(taskId);
+const toggleClientTask = async (taskId) => {
+  const current = clientTasks.value.find((x) => x.id === taskId);
+  const task = await setEntityTaskDone(taskId, !(current?.done));
   logLocalActivity({
     entity: "client",
     entity_id: id,
     type: "task",
-    label: `Task ${task?.done ? "completed" : "reopened"}: ${task?.title || ""}`.trim(),
+    label: `Task ${task?.status === "done" ? "completed" : "reopened"}: ${task?.title || ""}`.trim(),
   });
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
-const removeClientTask = (taskId) => {
+const removeClientTask = async (taskId) => {
   const task = clientTasks.value.find((x) => x.id === taskId);
-  deleteTask(taskId);
+  await removeEntityTask(taskId);
   logLocalActivity({
     entity: "client",
     entity_id: id,
     type: "task",
     label: `Task deleted: ${task?.title || "Task"}`,
   });
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
 const load = async () => {
@@ -684,7 +693,7 @@ const load = async () => {
     max_rooms: data.max_rooms,
     preferred_tags_input: (data.preferred_tags || []).join(", "),
   };
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
 const openMatches = async (force = false) => {
@@ -797,6 +806,30 @@ const autoPopulateSuggestedMatches = async (force = false) => {
 };
 
 const openHouse = (houseId) => router.push(`/houses/${houseId}`);
+
+const onShareClient = async () => {
+  if (!client.value?.id) return;
+  try {
+    await shareEntity({ entityType: "client", entityId: client.value.id });
+    toast("Share link/info copied.", "success");
+  } catch (e) {
+    toast(e?.message || String(e), "error");
+  }
+};
+
+const onArchiveClient = async () => {
+  if (!client.value?.id) return;
+  try {
+    await archiveEntity({
+      entityType: "client",
+      entityId: client.value.id,
+      archived: !!client.value.is_archived,
+    });
+    router.push("/clients");
+  } catch (e) {
+    toast(e?.message || String(e), "error");
+  }
+};
 
 const notifyMatchChanged = (clientId, houseId) => {
   window.dispatchEvent(new CustomEvent("match-changed", {

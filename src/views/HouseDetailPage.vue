@@ -40,13 +40,12 @@
         >
           {{ t.cancel_edit }}
         </button>
-        <button
-          class="px-4 py-2 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10"
-          @click="deleteHouse"
-          :disabled="saving || savingCover"
-        >
-          {{ t.delete }}
-        </button>
+        <RowActionsMenu
+          :archived="!!house?.is_archived"
+          @share="onShareHouse"
+          @archive="onArchiveHouse"
+          @delete="deleteHouse"
+        />
       </div>
     </div>
 
@@ -496,21 +495,25 @@ import { useRoute, useRouter, RouterLink } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import { useT } from "../lib/i18n";
+import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { formatDate, formatEuro, formatEuro2, formatBool } from "@/lib/formatters";
 import { settings } from "../lib/settings";
 import {
   HOUSE_PIPELINE,
   HOUSE_PIPELINE_LABELS,
-  addTask,
-  deleteTask,
   getEntityLocalActivity,
-  getEntityTasks,
   getHouseStage,
   logLocalActivity,
   setHouseStage,
-  toggleTask,
 } from "../lib/crmEnhancements";
+import {
+  createEntityTask,
+  loadEntityTasks,
+  removeEntityTask,
+  setEntityTaskDone,
+} from "../lib/tasksBackend";
+import { archiveEntity, shareEntity } from "../lib/entityActions";
 
 const route = useRoute();
 const router = useRouter();
@@ -696,9 +699,13 @@ const loadMatchedClients = async () => {
   if (!error) matchedClients.value = data || [];
 };
 
-const loadLocalCRMState = () => {
+const loadLocalCRMState = async () => {
   houseStage.value = getHouseStage(id);
-  houseTasks.value = getEntityTasks("house", id);
+  try {
+    houseTasks.value = await loadEntityTasks("house", id);
+  } catch {
+    houseTasks.value = [];
+  }
 };
 
 const loadAllClients = async () => {
@@ -727,6 +734,29 @@ const addManualMatch = async () => {
   });
   selectedClientId.value = null;
   await loadMatchedClients();
+};
+
+const onShareHouse = async () => {
+  if (!house.value?.id) return;
+  try {
+    await shareEntity({ entityType: "house", entityId: house.value.id });
+  } catch (e) {
+    err.value = e?.message || String(e);
+  }
+};
+
+const onArchiveHouse = async () => {
+  if (!house.value?.id) return;
+  try {
+    await archiveEntity({
+      entityType: "house",
+      entityId: house.value.id,
+      archived: !!house.value.is_archived,
+    });
+    router.push("/houses");
+  } catch (e) {
+    err.value = e?.message || String(e);
+  }
 };
 
 const updateMatchStatus = async (m) => {
@@ -815,7 +845,7 @@ const load = async () => {
 
   await loadMatchedClients();
   await loadActivity();
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
 const onHouseStageChange = () => {
@@ -828,8 +858,8 @@ const onHouseStageChange = () => {
   });
 };
 
-const addHouseTask = () => {
-  const row = addTask({
+const addHouseTask = async () => {
+  const row = await createEntityTask({
     entityType: "house",
     entityId: id,
     title: newTaskTitle.value,
@@ -839,34 +869,35 @@ const addHouseTask = () => {
     entity: "house",
     entity_id: id,
     type: "task",
-    label: `Task created: ${row.title}`,
+    label: `Task created: ${row?.title || newTaskTitle.value}`,
   });
   newTaskTitle.value = "";
   newTaskDueDate.value = "";
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
-const toggleHouseTask = (taskId) => {
-  const task = toggleTask(taskId);
+const toggleHouseTask = async (taskId) => {
+  const current = houseTasks.value.find((x) => x.id === taskId);
+  const task = await setEntityTaskDone(taskId, !(current?.done));
   logLocalActivity({
     entity: "house",
     entity_id: id,
     type: "task",
-    label: `Task ${task?.done ? "completed" : "reopened"}: ${task?.title || ""}`.trim(),
+    label: `Task ${task?.status === "done" ? "completed" : "reopened"}: ${task?.title || ""}`.trim(),
   });
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
-const removeHouseTask = (taskId) => {
+const removeHouseTask = async (taskId) => {
   const task = houseTasks.value.find((x) => x.id === taskId);
-  deleteTask(taskId);
+  await removeEntityTask(taskId);
   logLocalActivity({
     entity: "house",
     entity_id: id,
     type: "task",
     label: `Task deleted: ${task?.title || "Task"}`,
   });
-  loadLocalCRMState();
+  await loadLocalCRMState();
 };
 
 const startEdit = () => {
