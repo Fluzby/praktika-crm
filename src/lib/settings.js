@@ -6,6 +6,7 @@ const DEFAULTS = {
   aiModalStrong: true,
   aiTopN: 5,
   shortcuts: true,
+  sidebarHoverExpand: true,
   dashboardWidgets: {
     overview: true,
     house_availability: true,

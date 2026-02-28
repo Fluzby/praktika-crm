@@ -18,7 +18,6 @@
             <span class="h-2 w-2 rounded-full" :style="{ background: availabilityColor(house.availability) }"></span>
             <span>{{ availabilityLabel(house.availability) }}</span>
           </span>
-          <span class="chip ml-2">{{ houseStageLabel }}</span>
         </div>
       </div>
 
@@ -42,7 +41,6 @@
         </button>
         <RowActionsMenu
           :archived="!!house?.is_archived"
-          @share="onShareHouse"
           @archive="onArchiveHouse"
           @delete="deleteHouse"
         />
@@ -106,7 +104,7 @@
             </div>
           </div>
 
-          <form v-else class="grid gap-3 md:grid-cols-2" @submit.prevent="saveHouse">
+          <form v-else class="grid gap-3 md:grid-cols-2" novalidate @submit.prevent="saveHouse">
             <div class="md:col-span-2">
               <label class="text-sm text-white/60">{{ t.title }}</label>
               <input class="input mt-1" v-model.trim="edit.title" :placeholder="t.optional_title" />
@@ -114,7 +112,7 @@
 
             <div class="md:col-span-2">
               <label class="text-sm text-white/60">{{ t.address }} *</label>
-              <input class="input mt-1" v-model.trim="edit.address" required />
+              <input class="input mt-1" v-model.trim="edit.address" />
             </div>
 
             <div>
@@ -219,7 +217,7 @@
             </div>
 
             <div class="md:col-span-2 flex items-center gap-3 mt-2">
-              <button class="btn" :disabled="saving">
+              <button class="btn" type="submit" :disabled="saving">
                 {{ saving ? t.saving : t.save_changes }}
               </button>
               <p v-if="err" class="text-sm text-red-300">{{ err }}</p>
@@ -309,16 +307,6 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
-        <div class="glass p-6">
-          <h2 class="text-sm font-semibold text-white/80 mb-3">Property Pipeline</h2>
-          <select class="input" v-model="houseStage" @change="onHouseStageChange">
-            <option v-for="s in HOUSE_PIPELINE" :key="s" :value="s">
-              {{ HOUSE_PIPELINE_LABELS[s] }}
-            </option>
-          </select>
-          <p class="text-xs text-white/50 mt-2">Internal deal progress for this property.</p>
-        </div>
-
         <div class="glass-soft p-6">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-white/80">Follow-up Tasks</h2>
@@ -491,7 +479,7 @@
 
 <script setup>
 import { ref, onMounted, computed, onBeforeUnmount } from "vue";
-import { useRoute, useRouter, RouterLink } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import { useT } from "../lib/i18n";
@@ -500,12 +488,8 @@ import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { formatDate, formatEuro, formatEuro2, formatBool } from "@/lib/formatters";
 import { settings } from "../lib/settings";
 import {
-  HOUSE_PIPELINE,
-  HOUSE_PIPELINE_LABELS,
   getEntityLocalActivity,
-  getHouseStage,
   logLocalActivity,
-  setHouseStage,
 } from "../lib/crmEnhancements";
 import {
   createEntityTask,
@@ -513,7 +497,7 @@ import {
   removeEntityTask,
   setEntityTaskDone,
 } from "../lib/tasksBackend";
-import { archiveEntity, shareEntity } from "../lib/entityActions";
+import { archiveEntity } from "../lib/entityActions";
 
 const route = useRoute();
 const router = useRouter();
@@ -529,7 +513,6 @@ const matchedClients = ref([]);
 const allClients = ref([]);
 const selectedClientId = ref(null);
 const activity = ref([]);
-const houseStage = ref("new_listing");
 const houseTasks = ref([]);
 const newTaskTitle = ref("");
 const newTaskDueDate = ref("");
@@ -539,7 +522,6 @@ const showAllInfo = ref(false);
 const hideEmptyXlsxFields = ref(true);
 
 const t = useT();
-const houseStageLabel = computed(() => HOUSE_PIPELINE_LABELS[houseStage.value] || "New Listing");
 const openHouseTasks = computed(() => houseTasks.value.filter((x) => !x.done));
 const timelineEntries = computed(() => {
   const db = (activity.value || []).map((a) => ({
@@ -700,7 +682,6 @@ const loadMatchedClients = async () => {
 };
 
 const loadLocalCRMState = async () => {
-  houseStage.value = getHouseStage(id);
   try {
     houseTasks.value = await loadEntityTasks("house", id);
   } catch {
@@ -734,15 +715,6 @@ const addManualMatch = async () => {
   });
   selectedClientId.value = null;
   await loadMatchedClients();
-};
-
-const onShareHouse = async () => {
-  if (!house.value?.id) return;
-  try {
-    await shareEntity({ entityType: "house", entityId: house.value.id });
-  } catch (e) {
-    err.value = e?.message || String(e);
-  }
 };
 
 const onArchiveHouse = async () => {
@@ -846,16 +818,6 @@ const load = async () => {
   await loadMatchedClients();
   await loadActivity();
   await loadLocalCRMState();
-};
-
-const onHouseStageChange = () => {
-  setHouseStage(id, houseStage.value);
-  logLocalActivity({
-    entity: "house",
-    entity_id: id,
-    type: "pipeline",
-    label: `Property stage changed to ${HOUSE_PIPELINE_LABELS[houseStage.value]}`,
-  });
 };
 
 const addHouseTask = async () => {
@@ -1072,6 +1034,35 @@ const deletePhoto = async (p) => {
   }
 };
 
+const isTypingContext = (target) => {
+  if (!(target instanceof Element)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return !!target.closest('[contenteditable="true"]');
+};
+
+const onKeydown = (e) => {
+  if (!settings.shortcuts) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (isTypingContext(e.target)) return;
+
+  if (e.key === "e" || e.key === "E") {
+    if (!isEditing.value && !saving.value && !savingCover.value) {
+      e.preventDefault();
+      startEdit();
+    }
+    return;
+  }
+
+  if (e.key === "r" || e.key === "R") {
+    if (!saving.value && !savingCover.value) {
+      e.preventDefault();
+      load();
+    }
+  }
+};
+
 onMounted(load);
 onMounted(loadAllClients);
 onMounted(() => {
@@ -1084,5 +1075,9 @@ onMounted(() => {
   };
   window.addEventListener("match-changed", handler);
   onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
+});
+onMounted(() => {
+  window.addEventListener("keydown", onKeydown);
+  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 });
 </script>

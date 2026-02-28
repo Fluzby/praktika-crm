@@ -9,14 +9,17 @@
     <aside
       class="shell-sidebar"
       :class="[
-        sidebarCollapsed ? 'is-collapsed' : '',
+        effectiveSidebarCollapsed ? 'is-collapsed' : '',
         mobileSidebarOpen ? 'is-mobile-open' : '',
       ]"
+      @mouseenter="handleSidebarMouseEnter"
+      @mouseleave="handleSidebarMouseLeave"
     >
       <SideRail
-        :collapsed="sidebarCollapsed"
+        :collapsed="effectiveSidebarCollapsed"
+        :show-toggle="!settings.sidebarHoverExpand"
         @toggle-collapse="toggleSidebar"
-        @navigate="mobileSidebarOpen = false"
+        @navigate="handleSidebarNavigate"
       />
     </aside>
 
@@ -146,12 +149,15 @@ import SideRail from "../components/SideRail.vue";
 import BackToTopButton from "../components/BackToTopButton.vue";
 import { supabase } from "../lib/supabase";
 import { topbarActions } from "../lib/topbarActions";
+import { settings } from "../lib/settings";
 
 const mainEl = ref(null);
 const route = useRoute();
 const router = useRouter();
 
 const sidebarCollapsed = ref(false);
+const sidebarHoverExpanded = ref(false);
+const sidebarHoverLocked = ref(false);
 const mobileSidebarOpen = ref(false);
 const searchOpen = ref(false);
 const searchQuery = ref("");
@@ -161,6 +167,27 @@ const entitySearchLoading = ref(false);
 const entitySearchError = ref("");
 const entitySearchItems = ref([]);
 const SIDEBAR_STORAGE_KEY = "crm_sidebar_collapsed";
+const MAIN_TAB_SHORTCUT_PATHS = [
+  "/dashboard",
+  "/houses",
+  "/clients",
+  "/calendar",
+  "/archive",
+  "/settings",
+];
+
+const effectiveSidebarCollapsed = computed(() => {
+  if (!sidebarCollapsed.value) return false;
+  if (!settings.sidebarHoverExpand) return true;
+  return !(sidebarHoverExpanded.value && !sidebarHoverLocked.value);
+});
+
+const isTypingContext = (target) => {
+  if (!(target instanceof Element)) return false;
+  if (target.closest("input, textarea, select")) return true;
+  if (target.closest("[contenteditable]:not([contenteditable='false'])")) return true;
+  return target.getAttribute("role") === "textbox";
+};
 
 onMounted(() => {
   try {
@@ -186,8 +213,37 @@ watch(
   }
 );
 
+watch(
+  () => settings.sidebarHoverExpand,
+  (enabled) => {
+    sidebarHoverExpanded.value = false;
+    sidebarHoverLocked.value = false;
+    if (enabled) sidebarCollapsed.value = true;
+  },
+  { immediate: true }
+);
+
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
+};
+
+const handleSidebarMouseEnter = () => {
+  if (!settings.sidebarHoverExpand) return;
+  if (!sidebarCollapsed.value) return;
+  sidebarHoverExpanded.value = true;
+};
+
+const handleSidebarMouseLeave = () => {
+  sidebarHoverExpanded.value = false;
+  sidebarHoverLocked.value = false;
+};
+
+const handleSidebarNavigate = () => {
+  mobileSidebarOpen.value = false;
+  if (!settings.sidebarHoverExpand) return;
+  sidebarCollapsed.value = true;
+  sidebarHoverExpanded.value = false;
+  sidebarHoverLocked.value = true;
 };
 
 const searchItems = [
@@ -285,6 +341,18 @@ const openFirstSearchResult = () => {
 };
 
 const onWindowKeydown = (e) => {
+  if (settings.shortcuts && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    if (!isTypingContext(e.target) && /^[1-6]$/.test(e.key)) {
+      const tabIndex = Number(e.key) - 1;
+      const nextPath = MAIN_TAB_SHORTCUT_PATHS[tabIndex];
+      if (nextPath && route.path !== nextPath) {
+        e.preventDefault();
+        router.push(nextPath);
+        return;
+      }
+    }
+  }
+
   const isMetaK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
   if (!isMetaK) return;
   e.preventDefault();

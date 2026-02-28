@@ -19,7 +19,6 @@
         <button class="btn-ghost" @click="openMatches">{{ t.match_houses }}</button>
         <RowActionsMenu
           :archived="!!client?.is_archived"
-          @share="onShareClient"
           @archive="onArchiveClient"
           @delete="remove"
         />
@@ -33,10 +32,10 @@
             {{ t.details }}
           </h2>
 
-          <form class="grid gap-4 md:grid-cols-2" @submit.prevent="save">
+          <form class="grid gap-4 md:grid-cols-2" novalidate @submit.prevent="save">
             <div class="md:col-span-2">
               <label class="text-sm text-white/60">{{ t.full_name }} *</label>
-              <input class="input mt-1" v-model.trim="edit.full_name" required />
+              <input ref="fullNameInputEl" class="input mt-1" v-model.trim="edit.full_name" required />
             </div>
 
             <div>
@@ -46,11 +45,11 @@
 
             <div>
               <label class="text-sm text-white/60">{{ t.email }}</label>
-              <input class="input mt-1" type="email" v-model.trim="edit.email" />
+              <input class="input mt-1" type="text" v-model.trim="edit.email" />
             </div>
 
             <div class="md:col-span-2 flex items-center gap-3 mt-2">
-              <button class="btn" :disabled="saving">
+              <button class="btn" type="submit" :disabled="saving">
                 {{ saving ? t.saving : t.save_changes }}
               </button>
 
@@ -464,7 +463,7 @@ import {
   removeEntityTask,
   setEntityTaskDone,
 } from "../lib/tasksBackend";
-import { archiveEntity, shareEntity } from "../lib/entityActions";
+import { archiveEntity } from "../lib/entityActions";
 
 const route = useRoute();
 const router = useRouter();
@@ -495,6 +494,7 @@ const clientTasks = ref([]);
 
 const toastMsg = ref("");
 const toastType = ref("info");
+const fullNameInputEl = ref(null);
 let toastTimer = null;
 
 const t = useT();
@@ -807,16 +807,6 @@ const autoPopulateSuggestedMatches = async (force = false) => {
 
 const openHouse = (houseId) => router.push(`/houses/${houseId}`);
 
-const onShareClient = async () => {
-  if (!client.value?.id) return;
-  try {
-    await shareEntity({ entityType: "client", entityId: client.value.id });
-    toast("Share link/info copied.", "success");
-  } catch (e) {
-    toast(e?.message || String(e), "error");
-  }
-};
-
 const onArchiveClient = async () => {
   if (!client.value?.id) return;
   try {
@@ -933,9 +923,33 @@ const undoLast = async () => {
   }
 };
 
+const isTypingContext = (target) => {
+  if (!(target instanceof Element)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return !!target.closest('[contenteditable="true"]');
+};
+
 const onKeydown = (e) => {
   if (!settings.shortcuts) return;
-  if (!showMatches.value) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (isTypingContext(e.target)) return;
+
+  if (!showMatches.value) {
+    if (e.key === "e" || e.key === "E") {
+      e.preventDefault();
+      fullNameInputEl.value?.focus?.();
+      fullNameInputEl.value?.select?.();
+      return;
+    }
+    if (e.key === "r" || e.key === "R") {
+      e.preventDefault();
+      load();
+    }
+    return;
+  }
+
   if (!aiHouseCards.value.length) return;
 
   const max = aiHouseCards.value.length - 1;
@@ -979,6 +993,12 @@ const save = async () => {
   saving.value = true;
   error.value = "";
   ok.value = false;
+
+  if (!String(edit.value.full_name || "").trim()) {
+    error.value = t.value.full_name;
+    saving.value = false;
+    return;
+  }
 
   const { error: e } = await supabase
     .from("clients")

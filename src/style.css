@@ -271,6 +271,12 @@
     border: 1px solid var(--shell-border-soft);
     background: var(--shell-card);
     padding: 8px;
+    min-width: 0;
+  }
+
+  .shell-user-chip > .min-w-0 {
+    flex: 1;
+    min-width: 0;
   }
 
   .shell-user-chip.is-collapsed {
@@ -609,6 +615,20 @@
       left: 12px;
       right: 12px;
       width: auto;
+    }
+
+    .shell-user-name {
+      font-size: 0.82rem;
+    }
+
+    .shell-user-role {
+      font-size: 0.68rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .shell-user-role {
+      display: none;
     }
   }
 

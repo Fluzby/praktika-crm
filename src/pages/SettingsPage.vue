@@ -94,6 +94,14 @@ useTopbarActions(() => []);
         <input type="checkbox" v-model="settings.shortcuts" />
       </div>
 
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-sm">{{ t.sidebar_hover_expand }}</div>
+          <div class="text-xs text-white/50">{{ t.sidebar_hover_expand_help }}</div>
+        </div>
+        <input type="checkbox" v-model="settings.sidebarHoverExpand" />
+      </div>
+
       <div>
         <div class="text-sm text-white/70">{{ t.ai_top_n }}</div>
         <select class="input mt-2" v-model.number="settings.aiTopN">

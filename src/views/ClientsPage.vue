@@ -63,7 +63,6 @@
                 <td class="px-4 py-3 text-right" @click.stop>
                   <RowActionsMenu
                     :archived="!!c.is_archived"
-                    @share="onShareClient(c)"
                     @archive="onArchiveClient(c)"
                     @delete="onDeleteClient(c)"
                   />
@@ -157,7 +156,7 @@ import {
   CLIENT_PIPELINE_LABELS,
   getClientStatus,
 } from "../lib/crmEnhancements";
-import { archiveEntity, shareEntity } from "../lib/entityActions";
+import { archiveEntity } from "../lib/entityActions";
 import { useTopbarActions } from "../lib/topbarActions";
 
 const router = useRouter();
@@ -232,15 +231,6 @@ const formatDate = (iso) => {
 };
 
 const openClient = (id) => router.push(`/clients/${id}`);
-
-const onShareClient = async (clientRow) => {
-  try {
-    await shareEntity({ entityType: "client", entityId: clientRow.id });
-    alert("Share link/info copied.");
-  } catch (e) {
-    alert(e?.message || String(e));
-  }
-};
 
 const onArchiveClient = async (clientRow) => {
   try {

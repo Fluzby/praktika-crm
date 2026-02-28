@@ -18,7 +18,6 @@
         :style="menuStyle"
         @click.stop
       >
-        <button class="menu-item" type="button" @click="emitAndClose('share')">Share</button>
         <button class="menu-item" type="button" @click="emitAndClose('archive')">
           {{ archived ? "Unarchive" : "Archive" }}
         </button>
@@ -35,7 +34,7 @@ defineProps({
   archived: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["share", "archive", "delete"]);
+const emit = defineEmits(["archive", "delete"]);
 const open = ref(false);
 const rootEl = ref(null);
 const triggerEl = ref(null);

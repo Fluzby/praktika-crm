@@ -58,6 +58,7 @@
 
     <div class="shell-nav-footer">
       <button
+        v-if="showToggle"
         class="shell-sidebar-toggle"
         type="button"
         @click="$emit('toggle-collapse')"
@@ -69,10 +70,10 @@
       </button>
 
       <div class="shell-user-chip" :class="collapsed ? 'is-collapsed' : ''">
-        <div class="shell-user-avatar">M</div>
+        <div class="shell-user-avatar">{{ userInitial }}</div>
         <div v-if="!collapsed" class="min-w-0">
-          <div class="shell-user-name truncate">Member</div>
-          <div class="shell-user-role truncate">Agent</div>
+          <div class="shell-user-name truncate">{{ userDisplayName }}</div>
+          <div v-if="userSubtitle" class="shell-user-role truncate">{{ userSubtitle }}</div>
         </div>
       </div>
 
@@ -90,6 +91,7 @@
 </template>
 
 <script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import NavIcon from "./SideRailIcon.vue";
@@ -97,18 +99,60 @@ import { useT } from "../lib/i18n";
 
 defineProps({
   collapsed: { type: Boolean, default: false },
+  showToggle: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["toggle-collapse", "navigate"]);
 const router = useRouter();
 const t = useT();
+const userName = ref("");
+const userEmail = ref("");
+let authSubscription = null;
+
+const userDisplayName = computed(() => {
+  if (userName.value) return userName.value;
+  if (userEmail.value) return userEmail.value;
+  return "Account";
+});
+
+const userSubtitle = computed(() => {
+  if (!userEmail.value) return "";
+  if (userName.value && userName.value !== userEmail.value) return userEmail.value;
+  return "";
+});
+const userInitial = computed(() => (userDisplayName.value || "A").charAt(0).toUpperCase());
 
 const handleNavigate = () => {
   emit("navigate");
+};
+
+const setUserFromAuth = (user) => {
+  if (!user) {
+    userName.value = "";
+    userEmail.value = "";
+    return;
+  }
+  const meta = user.user_metadata || {};
+  userName.value = meta.full_name || meta.name || meta.username || "";
+  userEmail.value = user.email || "";
 };
 
 const logout = async () => {
   await supabase.auth.signOut();
   router.push("/login");
 };
+
+onMounted(async () => {
+  const { data } = await supabase.auth.getUser();
+  setUserFromAuth(data?.user || null);
+
+  const { data: authData } = supabase.auth.onAuthStateChange((_event, session) => {
+    setUserFromAuth(session?.user || null);
+  });
+  authSubscription = authData?.subscription || null;
+});
+
+onBeforeUnmount(() => {
+  authSubscription?.unsubscribe?.();
+});
 </script>
