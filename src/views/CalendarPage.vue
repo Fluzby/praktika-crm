@@ -1,56 +1,89 @@
 <template>
   <div class="space-y-6">
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_390px] gap-6 items-start">
-      <section class="glass p-4 relative">
-        <div class="flex items-center justify-between gap-3">
-          <button class="btn-ghost" type="button" @click="prevMonth">←</button>
-          <div class="font-semibold">{{ monthLabel }}</div>
-          <button class="btn-ghost" type="button" @click="nextMonth">→</button>
+      <section class="glass p-4 md:p-5 relative overflow-hidden">
+        <div
+          class="absolute inset-x-0 top-0 h-24 pointer-events-none"
+          :style="{ background: 'linear-gradient(180deg, color-mix(in srgb, var(--shell-accent-soft) 70%, transparent), transparent)' }"
+        ></div>
+
+        <div class="relative flex items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-[0.14em]" style="color: var(--shell-text-muted);">Planner</div>
+            <div class="font-semibold text-lg leading-tight mt-1">{{ monthLabel }}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="h-9 w-9 rounded-lg border"
+              style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);"
+              type="button"
+              @click="prevMonth"
+            >
+              ←
+            </button>
+            <button
+              class="h-9 w-9 rounded-lg border"
+              style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);"
+              type="button"
+              @click="nextMonth"
+            >
+              →
+            </button>
+          </div>
+        </div>
+
+        <div class="relative mt-3 flex items-center gap-2 text-xs" style="color: var(--shell-text-muted);">
+          <span class="chip px-2 py-0.5">Events: {{ monthEventCount }}</span>
+          <span class="chip px-2 py-0.5">Deadlines: {{ monthDeadlineCount }}</span>
         </div>
 
         <div class="mt-4 overflow-x-auto">
           <table class="w-full min-w-[720px] table-fixed text-sm">
             <thead>
-              <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50 border-b border-white/10">
-                <th v-for="d in weekDays" :key="d" class="px-3 py-2 font-medium">{{ d }}</th>
+              <tr class="text-left text-[10px] uppercase tracking-[0.14em] border-b border-white/10" style="color: var(--shell-text-muted);">
+                <th v-for="d in weekDays" :key="d" class="px-3 py-2.5 font-medium">{{ d }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(week, wi) in calendarGrid" :key="wi" class="border-b border-white/8 last:border-b-0">
-                <td v-for="day in week" :key="day.key" class="align-top p-2">
+                <td v-for="day in week" :key="day.key" class="align-top p-1.5">
                   <button
                     type="button"
-                    class="relative w-full h-24 rounded-lg border p-2 text-left transition overflow-hidden"
+                    class="relative w-full h-24 rounded-xl border p-2.5 text-left transition overflow-hidden"
                     :class="day.active
                       ? day.events.length
-                        ? 'hover:opacity-95'
+                        ? 'hover:brightness-110'
                         : day.isToday
-                          ? 'border-emerald-400/60 bg-emerald-500/12 hover:bg-emerald-500/16'
-                          : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05]'
-                      : 'border-white/5 bg-white/[0.01] opacity-40'"
+                          ? 'border-emerald-400/70 bg-emerald-500/14 hover:bg-emerald-500/18'
+                          : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
+                      : 'border-white/5 bg-white/[0.01] text-white/20 opacity-45'"
                     :style="dayCellStyle(day)"
-                    @click="day.active && selectDate(day.date)"
+                    @click="day.active && handleDayPress(day)"
                   >
                     <div class="flex items-center justify-between">
-                      <span class="text-xs">{{ day.dayNum }}</span>
+                      <span class="text-xs font-medium">{{ day.dayNum }}</span>
                       <span
                         v-if="day.isToday"
-                        class="text-[10px]"
-                        :class="day.events.length ? 'opacity-85' : 'text-emerald-300'"
+                        class="text-[10px] rounded-md px-1.5 py-0.5"
+                        style="background: rgba(26,115,232,0.18); border: 1px solid rgba(26,115,232,0.42); color: #1a73e8;"
                       >
                         Today
                       </span>
                     </div>
-                    <div class="text-xs mt-2 min-h-8 space-y-1 overflow-hidden">
-                      <div v-if="day.active && day.deadlines.length" class="truncate">
-                        ● {{ day.deadlines[0].title }}
+                    <div class="text-[11px] mt-2 min-h-8 space-y-1 overflow-hidden">
+                      <div
+                        v-for="item in dayPreviewItems(day)"
+                        :key="item.key"
+                        class="truncate flex items-center gap-1.5"
+                      >
+                        <span
+                          class="h-1.5 w-1.5 rounded-full shrink-0"
+                          :style="{ background: item.color }"
+                        ></span>
+                        <span class="truncate">{{ item.title }}</span>
                       </div>
-                      <div v-else-if="day.active && day.events.length" class="truncate">
-                        <span class="opacity-85">◆</span>
-                        {{ day.events[0].title }}
-                      </div>
-                      <div v-if="day.active && day.deadlines.length + day.events.length > 1" class="opacity-70">
-                        +{{ day.deadlines.length + day.events.length - 1 }} more
+                      <div v-if="dayTotalItems(day) > dayPreviewItems(day).length" class="opacity-75 text-[10px]">
+                        +{{ dayTotalItems(day) - dayPreviewItems(day).length }} more
                       </div>
                     </div>
                   </button>
@@ -63,10 +96,10 @@
       </section>
 
       <aside class="glass-soft p-4 xl:sticky xl:top-20 space-y-4">
-        <div class="text-sm font-semibold">Add event</div>
-        <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3">
+        <div class="text-sm font-semibold" style="color: var(--shell-text-strong);">Create Event</div>
+        <div class="rounded-xl border p-3 space-y-3" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 82%, transparent);">
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Pealkiri (Title)</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Title</label>
             <input
               class="input"
               v-model.trim="eventTitle"
@@ -76,7 +109,7 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Märkus (Note)</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Note</label>
             <textarea
               class="textarea"
               rows="3"
@@ -86,7 +119,7 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Date</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Date</label>
             <div class="flex items-center gap-2 flex-wrap">
               <button
                 class="btn-ghost text-sm"
@@ -114,7 +147,7 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Repeat</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Repeat</label>
             <select class="input" v-model="eventRepeat">
               <option value="none">Do not repeat</option>
               <option value="yearly">Repeat every year</option>
@@ -122,7 +155,7 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Event type</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Event type</label>
             <select class="input" v-model="eventType">
               <option v-for="option in EVENT_TYPE_OPTIONS" :key="option.value" :value="option.value">
                 {{ option.label }}
@@ -131,7 +164,7 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Linked client (optional)</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Linked client (optional)</label>
             <select class="input" v-model="eventClientId">
               <option value="">No client</option>
               <option v-for="c in eventClients" :key="c.id" :value="c.id">
@@ -141,7 +174,7 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Linked property (optional)</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Linked property (optional)</label>
             <select class="input" v-model="eventHouseId">
               <option value="">No property</option>
               <option v-for="h in eventHouses" :key="h.id" :value="h.id">
@@ -151,15 +184,17 @@
           </div>
 
           <div>
-            <label class="text-xs text-white/60 mb-1 block">Color</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Color</label>
             <div class="mt-1 flex items-center gap-2 flex-wrap">
               <button
                 v-for="preset in CALENDAR_COLOR_PRESETS"
                 :key="preset"
                 type="button"
-                class="h-6 w-6 rounded-md border transition"
+                class="h-6 w-6 rounded-md border transition disabled:opacity-30 disabled:cursor-not-allowed"
                 :style="{ background: preset, borderColor: eventColor === preset ? 'white' : 'rgba(255,255,255,0.25)' }"
                 @click="eventColor = preset"
+                :disabled="isColorTakenForDraftDate(preset) && eventColor !== preset"
+                :title="isColorTakenForDraftDate(preset) && eventColor !== preset ? 'Already used on this date' : ''"
               ></button>
             </div>
           </div>
@@ -167,13 +202,13 @@
           <button class="btn w-full" type="button" @click="addEvent">Add event</button>
         </div>
 
-        <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-          <div class="text-xs text-white/55 mb-2">Upcoming events</div>
+        <div class="rounded-xl border p-3" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 82%, transparent);">
+          <div class="text-xs uppercase tracking-[0.1em] mb-2" style="color: var(--shell-text-muted);">Upcoming events</div>
           <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
             <div
               v-for="e in upcomingEvents"
               :key="`up-${e.id}`"
-              class="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-2 py-2"
+              class="flex items-center justify-between gap-2 rounded-xl border border-white/12 px-2.5 py-2.5"
               :style="eventCardStyle(e)"
             >
               <div class="min-w-0">
@@ -198,7 +233,7 @@
                 </button>
               </div>
             </div>
-            <div v-if="upcomingEvents.length === 0" class="text-sm text-white/55">No upcoming events.</div>
+            <div v-if="upcomingEvents.length === 0" class="text-sm" style="color: var(--shell-text-muted);">No upcoming events.</div>
           </div>
         </div>
 
@@ -206,6 +241,79 @@
     </div>
 
     <teleport to="body">
+      <div
+        v-if="selectedDayDetails"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      >
+        <div class="absolute inset-0 modal-backdrop" @click="selectedDayDetails = null"></div>
+        <div
+          class="relative modal-panel rounded-2xl w-full max-w-3xl max-h-[88vh] overflow-auto p-6"
+          role="dialog"
+          aria-modal="true"
+          style="color: var(--shell-text-strong);"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">
+              {{ formatDate(selectedDayDetails.date) }} • Day details
+            </div>
+            <button class="btn-ghost text-xs" type="button" @click="selectedDayDetails = null">Close</button>
+          </div>
+
+          <div class="space-y-4">
+            <div v-if="selectedDayDetails.events.length" class="space-y-2">
+              <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">Events</div>
+              <div
+                v-for="event in selectedDayDetails.events"
+                :key="`day-ev-${event.id}`"
+                class="rounded-lg border p-3"
+                style="border-color: var(--shell-border); background: var(--shell-card);"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="font-medium">◆ {{ event.title }}</div>
+                    <div class="text-xs mt-1 opacity-80">
+                      {{ eventTypeLabel(event.type) }}<span v-if="event.repeat === 'yearly'"> • yearly</span>
+                    </div>
+                    <div v-if="event.note" class="text-xs mt-1.5 opacity-85 whitespace-pre-wrap">{{ event.note }}</div>
+                  </div>
+                  <button class="btn-ghost text-xs shrink-0" type="button" @click="openEventDetails(event)">
+                    Open
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="selectedDayDetails.deadlines.length" class="space-y-2">
+              <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">Deadlines</div>
+              <div
+                v-for="deadline in selectedDayDetails.deadlines"
+                :key="`day-dl-${deadline.id}`"
+                class="rounded-lg border p-3"
+                style="border-color: var(--shell-border); background: var(--shell-card);"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="font-medium">● {{ deadline.title }}</div>
+                    <div class="text-xs mt-1 opacity-80">{{ deadline.entityType || "record" }}</div>
+                  </div>
+                  <button class="btn-ghost text-xs shrink-0" type="button" @click="openDeadlineDetails(deadline)">
+                    Open
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="!selectedDayDetails.events.length && !selectedDayDetails.deadlines.length"
+              class="text-sm"
+              style="color: var(--shell-text-muted);"
+            >
+              No items for this day.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div
         v-if="selectedCalendarItem"
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -320,8 +428,12 @@ const eventHouseId = ref("");
 const eventColor = ref("#22c55e");
 const deadlinesByDate = ref({});
 const selectedCalendarItem = ref(null);
+const selectedDayDetails = ref(null);
 const eventClients = ref([]);
 const eventHouses = ref([]);
+const DAY_DOUBLE_TAP_MS = 340;
+let lastDayTapDate = "";
+let lastDayTapAt = 0;
 
 useTopbarActions(() => [
   { key: "today", label: "Today", onClick: () => goToday() },
@@ -380,18 +492,37 @@ function contrastText(color) {
 function dayCellStyle(day) {
   if (!day.active) return {};
   const selectedOutline = isSelected(day.date)
-    ? { boxShadow: "inset 0 0 0 2px rgba(52, 211, 153, 0.95)" }
+    ? { boxShadow: "inset 0 0 0 2px rgba(26, 115, 232, 0.95)" }
     : {};
+  const todayAccent = day.isToday
+    ? { borderColor: "rgba(26,115,232,0.5)", background: "rgba(26,115,232,0.08)" }
+    : {};
+  const colors = dayBackgroundColors(day);
 
-  if (!day.events.length) return selectedOutline;
-  const color = normalizeHexColor(day.events[0].color);
-  const text = contrastText(color);
-  const { r, g, b } = hexToRgb(color);
+  if (!colors.length) return { ...todayAccent, ...selectedOutline };
+  if (colors.length === 1) {
+    const { r, g, b } = hexToRgb(colors[0]);
+    return {
+      ...todayAccent,
+      ...selectedOutline,
+      background: `rgba(${r}, ${g}, ${b}, 0.2)`,
+      borderColor: `rgba(${r}, ${g}, ${b}, 0.6)`,
+    };
+  }
+
+  const step = 100 / colors.length;
+  const stops = colors.map((c, i) => {
+    const { r, g, b } = hexToRgb(c);
+    const start = (i * step).toFixed(2);
+    const end = ((i + 1) * step).toFixed(2);
+    return `rgba(${r}, ${g}, ${b}, 0.2) ${start}%, rgba(${r}, ${g}, ${b}, 0.2) ${end}%`;
+  });
+  const { r, g, b } = hexToRgb(colors[0]);
   return {
+    ...todayAccent,
     ...selectedOutline,
-    background: `rgba(${r}, ${g}, ${b}, 0.2)`,
+    background: `linear-gradient(135deg, ${stops.join(", ")})`,
     borderColor: `rgba(${r}, ${g}, ${b}, 0.6)`,
-    color: text,
   };
 }
 
@@ -553,6 +684,14 @@ const monthLabel = computed(() => {
   return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 });
 
+const monthEventCount = computed(() =>
+  Object.values(monthEventsByDate.value).reduce((sum, items) => sum + items.length, 0)
+);
+
+const monthDeadlineCount = computed(() =>
+  Object.values(deadlinesByDate.value).reduce((sum, items) => sum + items.length, 0)
+);
+
 const calendarGrid = computed(() => {
   const first = new Date(viewYear.value, viewMonth.value, 1);
   const last = new Date(viewYear.value, viewMonth.value + 1, 0);
@@ -617,44 +756,87 @@ const houseNameById = computed(() => {
   return map;
 });
 
+const draftTargetDate = computed(() =>
+  eventDateMode.value === "exact" ? eventExactDate.value : todayKey.value
+);
+
+const usedDraftDateColors = computed(() => {
+  const date = draftTargetDate.value;
+  if (!date) return new Set();
+  const colors = events.value
+    .filter((event) => eventOccursOnDate(event, date))
+    .map((event) => normalizeHexColor(event.color));
+  return new Set(colors);
+});
+
 const eventTypeLabel = (type) => EVENT_TYPE_OPTIONS.find((o) => o.value === type)?.label || "Meeting";
+
+function isColorTakenForDraftDate(color) {
+  return usedDraftDateColors.value.has(normalizeHexColor(color));
+}
+
+function pickAvailableColorForDate(dateKey, preferredColor = "") {
+  const used = new Set(
+    events.value
+      .filter((event) => eventOccursOnDate(event, dateKey))
+      .map((event) => normalizeHexColor(event.color))
+  );
+
+  const preferred = normalizeHexColor(preferredColor || eventColor.value);
+  if (!used.has(preferred)) return preferred;
+
+  for (const preset of CALENDAR_COLOR_PRESETS) {
+    const c = normalizeHexColor(preset);
+    if (!used.has(c)) return c;
+  }
+
+  // Fallback palette if all presets are already used for the date.
+  const fallback = [
+    "#00acc1",
+    "#7cb342",
+    "#fb8c00",
+    "#d81b60",
+    "#5e35b1",
+    "#546e7a",
+    "#039be5",
+    "#43a047",
+    "#f4511e",
+    "#8e24aa",
+    "#3949ab",
+    "#6d4c41",
+  ];
+  for (const c of fallback) {
+    if (!used.has(c)) return c;
+  }
+  return preferred;
+}
 
 function isSelected(date) {
   return date && date === selectedDate.value;
 }
 
-function selectDate(date) {
+function selectDate(date, openInfo = false) {
   selectedDate.value = date;
+  eventDateMode.value = "exact";
   eventExactDate.value = date;
+  if (!openInfo) {
+    selectedCalendarItem.value = null;
+    selectedDayDetails.value = null;
+    return;
+  }
   const dayEvents = events.value.filter((event) => eventOccursOnDate(event, date));
   const dayDeadlines = deadlinesByDate.value[date] || [];
-  if (dayEvents[0]) {
-    selectedCalendarItem.value = {
-      kind: "event",
-      id: dayEvents[0].id,
-      title: dayEvents[0].title,
-      note: dayEvents[0].note || "",
-      date,
-      color: dayEvents[0].color || "#22c55e",
-      type: dayEvents[0].type || "meeting",
-      clientId: dayEvents[0].clientId || "",
-      houseId: dayEvents[0].houseId || "",
-      repeat: dayEvents[0].repeat,
-    };
-  } else if (dayDeadlines[0]) {
-    selectedCalendarItem.value = {
-      kind: "deadline",
-      id: dayDeadlines[0].id,
-      title: dayDeadlines[0].title,
-      note: "",
-      date,
-      entityType: dayDeadlines[0].entityType,
-      entityId: dayDeadlines[0].entityId,
-      repeat: "none",
-    };
-  } else {
-    selectedCalendarItem.value = null;
-  }
+  selectedCalendarItem.value = null;
+  selectedDayDetails.value = { date, events: dayEvents, deadlines: dayDeadlines };
+}
+
+function handleDayPress(day) {
+  if (!day?.active || !day.date) return;
+  const now = Date.now();
+  const isDoubleTap = lastDayTapDate === day.date && now - lastDayTapAt <= DAY_DOUBLE_TAP_MS;
+  lastDayTapDate = day.date;
+  lastDayTapAt = now;
+  selectDate(day.date, isDoubleTap);
 }
 
 function prevMonth() {
@@ -673,6 +855,36 @@ function nextMonth() {
   } else {
     viewMonth.value += 1;
   }
+}
+
+function dayPreviewItems(day) {
+  if (!day?.active) return [];
+  const deadlines = (day.deadlines || []).map((d) => ({
+    key: `d-${d.id}`,
+    title: d.title,
+    color: "#1a73e8",
+  }));
+  const eventsPreview = (day.events || []).map((e) => ({
+    key: `e-${e.id}`,
+    title: e.title,
+    color: normalizeHexColor(e.color),
+  }));
+  return [...deadlines, ...eventsPreview].slice(0, 2);
+}
+
+function dayTotalItems(day) {
+  if (!day?.active) return 0;
+  return (day.deadlines?.length || 0) + (day.events?.length || 0);
+}
+
+function dayBackgroundColors(day) {
+  if (!day?.active) return [];
+  const colors = [];
+  if (day.deadlines?.length) colors.push("#1a73e8");
+  for (const event of day.events || []) {
+    colors.push(normalizeHexColor(event.color));
+  }
+  return colors.slice(0, 6);
 }
 
 function goToday() {
@@ -717,13 +929,15 @@ function addEvent() {
 
   const targetDate = eventDateMode.value === "exact" ? eventExactDate.value : todayKey.value;
   if (!targetDate) return;
+  const pickedColor = pickAvailableColorForDate(targetDate, eventColor.value);
+  eventColor.value = pickedColor;
 
   const event = {
     id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
     title,
     note: eventNote.value.trim(),
     date: targetDate,
-    color: normalizeHexColor(eventColor.value),
+    color: pickedColor,
     type: eventType.value,
     clientId: eventClientId.value || "",
     houseId: eventHouseId.value || "",
@@ -768,6 +982,7 @@ function removeEvent(eventId) {
     );
   });
   selectedCalendarItem.value = null;
+  selectedDayDetails.value = null;
   persistEvents();
 }
 
@@ -775,6 +990,7 @@ function resetCalendar() {
   if (!confirm("Reset calendar events? This will remove all saved events.")) return;
   events.value = [];
   selectedCalendarItem.value = null;
+  selectedDayDetails.value = null;
   eventTitle.value = "";
   eventNote.value = "";
   eventType.value = "meeting";
@@ -791,6 +1007,7 @@ function resetCalendar() {
 }
 
 function openEventDetails(event) {
+  selectedDayDetails.value = null;
   const detailDate = event.repeat === "yearly" ? (nextOccurrenceFrom(event, selectedDate.value) || event.date) : event.date;
   selectDate(detailDate);
   selectedCalendarItem.value = {
@@ -808,6 +1025,7 @@ function openEventDetails(event) {
 }
 
 function openDeadlineDetails(deadline) {
+  selectedDayDetails.value = null;
   const date = selectedDate.value;
   selectedCalendarItem.value = {
     kind: "deadline",

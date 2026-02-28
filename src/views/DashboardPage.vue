@@ -141,51 +141,67 @@
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
-          <div class="mb-5 relative">
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold">Calendar</h2>
+          <div
+            class="mb-5 relative rounded-2xl border p-4"
+            style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 84%, transparent);"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="font-semibold" style="color: var(--shell-text-strong);">Calendar</h2>
+                <div class="text-sm mt-0.5" style="color: var(--shell-text-muted);">{{ dashboardMonthLabel }}</div>
+              </div>
               <div class="flex items-center gap-2">
-                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardPrevMonth">←</button>
-                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardNextMonth">→</button>
-                <RouterLink to="/calendar" class="text-xs text-white/60 hover:text-white">Open →</RouterLink>
+                <button class="h-8 w-8 rounded-lg border" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);" type="button" @click="dashboardPrevMonth">←</button>
+                <button class="h-8 w-8 rounded-lg border" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);" type="button" @click="dashboardNextMonth">→</button>
+                <RouterLink to="/calendar" class="btn-ghost text-xs px-2.5 py-1.5">Open</RouterLink>
               </div>
             </div>
-            <div class="text-xs text-white/50 mt-1">{{ dashboardMonthLabel }}</div>
-            <div class="grid grid-cols-7 gap-1 mt-3 text-[11px]">
-              <div v-for="d in calendarWeekdays" :key="`h-${d}`" class="text-white/40 text-center py-1">{{ d }}</div>
+
+            <div class="mt-3 grid grid-cols-7 gap-1.5">
+              <div
+                v-for="d in calendarWeekdays"
+                :key="`h-${d}`"
+                class="text-center py-1 text-[10px] uppercase tracking-[0.12em]"
+                style="color: var(--shell-text-muted);"
+              >
+                {{ d }}
+              </div>
               <button
                 v-for="day in dashboardCalendarCells"
                 :key="day.key"
-                class="h-10 rounded-md border text-center pt-1 relative"
-                :class="day.active
-                  ? day.isToday
-                    ? 'border-emerald-400/70 bg-emerald-500/14'
-                    : 'border-white/10 bg-white/[0.02]'
-                  : 'border-white/5 bg-white/[0.01] text-white/25'"
+                class="relative h-11 rounded-xl border text-left px-2 pt-1.5 transition"
+                :class="dashboardDayClass(day)"
                 :style="dashboardDayStyle(day)"
                 @click="openDashboardDate(day)"
                 type="button"
                 :disabled="!day.active"
               >
-                <div>{{ day.dayNum || "" }}</div>
-                <div v-if="day.events.length" class="absolute left-1/2 -translate-x-1/2 bottom-1 h-1.5 w-1.5 rounded-full bg-current opacity-80"></div>
-                <div v-if="day.taskCount" class="text-[10px] text-emerald-300 leading-none mt-0.5">•{{ day.taskCount }}</div>
+                <div class="text-xs font-medium">{{ day.dayNum || "" }}</div>
+                <div
+                  v-if="day.taskCount"
+                  class="absolute right-1.5 bottom-1 rounded px-1 py-0.5 text-[10px] leading-none"
+                  style="background: rgba(26,115,232,0.18); color: #1a73e8;"
+                >
+                  {{ day.taskCount }}
+                </div>
               </button>
             </div>
 
             <div
               v-if="dashboardSelectedDate"
-              class="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+              class="mt-3 rounded-xl border p-3"
+              style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 90%, transparent);"
             >
               <div class="flex items-center justify-between mb-2">
-                <div class="text-xs text-white/55">Selected: {{ dashboardSelectedDate }}</div>
-                <button class="btn-ghost text-xs" type="button" @click="dashboardSelectedDate = ''">Close</button>
+                <div class="text-xs" style="color: var(--shell-text-muted);">Selected: {{ dashboardSelectedDate }}</div>
+                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardSelectedDate = ''">Close</button>
               </div>
               <div class="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
                 <div
                   v-for="event in dashboardSelectedItems.events"
                   :key="`ev-${event.id}`"
-                  class="rounded-md border border-white/10 px-2 py-1.5"
+                  class="rounded-md border px-2 py-1.5"
+                  style="border-color: var(--shell-border-soft);"
                   :style="dashboardDayStyle({ active: true, events: [event] })"
                 >
                   <div class="font-medium">◆ {{ event.title }}</div>
@@ -194,7 +210,8 @@
                 <div
                   v-for="task in dashboardSelectedItems.tasks"
                   :key="`tk-${task.id}`"
-                  class="rounded-md border border-white/10 px-2 py-1.5"
+                  class="rounded-md border px-2 py-1.5"
+                  style="border-color: var(--shell-border-soft);"
                 >
                   <div class="font-medium">• {{ task.title }}</div>
                   <div class="opacity-70 flex items-center justify-between gap-2">
@@ -211,7 +228,7 @@
                 </div>
                 <div
                   v-if="!dashboardSelectedItems.events.length && !dashboardSelectedItems.tasks.length"
-                  class="text-white/55"
+                  style="color: var(--shell-text-muted);"
                 >
                   No items for this day.
                 </div>
@@ -570,13 +587,16 @@ const recentClients = ref([]);
 const recentHouses = ref([]);
 const activity = ref([]);
 const taskSummary = ref({ overdue: 0, today: 0, upcoming: 0, totalOpen: 0, recent: [] });
-const calendarWeekdays = ["M", "T", "W", "T", "F", "S", "S"];
+const calendarWeekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const CAL_EVENTS_KEY = "crm_calendar_events_v2";
 const CAL_EVENTS_LEGACY_KEY = "crm_calendar_events_v1";
 const dashboardViewYear = ref(new Date().getFullYear());
 const dashboardViewMonth = ref(new Date().getMonth());
 const dashboardSelectedDate = ref("");
 const dashboardEvents = ref([]);
+const DASHBOARD_DAY_DOUBLE_TAP_MS = 340;
+let dashboardLastTapDate = "";
+let dashboardLastTapAt = 0;
 
 // KPI stats removed from dashboard
 
@@ -790,17 +810,53 @@ const hexToRgb = (color) => {
 };
 
 const dashboardDayStyle = (day) => {
-  if (!day?.active || !day.events?.length) return {};
-  const color = normalizeHexColor(day.events[0].color);
-  const { r, g, b } = hexToRgb(color);
+  if (!day?.active) return {};
+  const colors = (day.events || []).map((e) => normalizeHexColor(e.color)).slice(0, 6);
+  if (!colors.length) return {};
+  if (colors.length === 1) {
+    const { r, g, b } = hexToRgb(colors[0]);
+    return {
+      background: `rgba(${r}, ${g}, ${b}, 0.2)`,
+      borderColor: `rgba(${r}, ${g}, ${b}, 0.62)`,
+    };
+  }
+
+  const step = 100 / colors.length;
+  const stops = colors.map((c, i) => {
+    const { r, g, b } = hexToRgb(c);
+    const start = (i * step).toFixed(2);
+    const end = ((i + 1) * step).toFixed(2);
+    return `rgba(${r}, ${g}, ${b}, 0.2) ${start}%, rgba(${r}, ${g}, ${b}, 0.2) ${end}%`;
+  });
+  const { r, g, b } = hexToRgb(colors[0]);
   return {
-    background: `rgba(${r}, ${g}, ${b}, 0.2)`,
+    background: `linear-gradient(135deg, ${stops.join(", ")})`,
     borderColor: `rgba(${r}, ${g}, ${b}, 0.62)`,
   };
 };
 
+const dashboardDayClass = (day) => {
+  if (!day?.active) return "border-transparent bg-transparent opacity-45";
+  if (day.dateKey === dashboardSelectedDate.value) {
+    return "border-sky-400/70 bg-sky-500/12 shadow-[0_0_0_1px_rgba(56,189,248,0.24)]";
+  }
+  if (day.isToday) return "border-sky-400/55 bg-sky-500/8";
+  return "border-white/10 bg-white/[0.02] hover:bg-white/[0.06]";
+};
+
 const openDashboardDate = (day) => {
   if (!day?.active) return;
+  const now = Date.now();
+  const isDoubleTap =
+    dashboardLastTapDate === day.dateKey &&
+    now - dashboardLastTapAt <= DASHBOARD_DAY_DOUBLE_TAP_MS;
+  dashboardLastTapDate = day.dateKey;
+  dashboardLastTapAt = now;
+
+  if (!isDoubleTap) {
+    dashboardSelectedDate.value = "";
+    return;
+  }
   dashboardSelectedDate.value = day.dateKey;
 };
 
