@@ -398,10 +398,17 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import {
+  createCalendarEvent,
+  importCalendarEvents,
+  loadCalendarEvents,
+  removeCalendarEvent,
+  resetCalendarEvents,
+} from "../lib/calendarEventsBackend";
 import { useTopbarActions } from "../lib/topbarActions";
 
-const STORAGE_KEY = "crm_calendar_events_v2";
-const LEGACY_STORAGE_KEY = "crm_calendar_events_v1";
+const LOCAL_STORAGE_KEY = "crm_calendar_events_v2";
+const LOCAL_LEGACY_STORAGE_KEY = "crm_calendar_events_v1";
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const CALENDAR_COLOR_PRESETS = ["#4285f4", "#34a853", "#ea4335", "#fbbc05", "#8e24aa"];
 const EVENT_TYPE_OPTIONS = [
@@ -416,7 +423,7 @@ const viewYear = ref(now.getFullYear());
 const viewMonth = ref(now.getMonth());
 const selectedDate = ref(toDateKey(now));
 
-const events = ref(loadEvents());
+const events = ref([]);
 const eventTitle = ref("");
 const eventNote = ref("");
 const eventDateMode = ref("today");
@@ -597,32 +604,71 @@ function normalizeEvents(payload) {
   return [];
 }
 
-function loadEvents() {
-  const hasV2Key = localStorage.getItem(STORAGE_KEY) !== null;
+function loadEventsFromLocal() {
+  const hasV2Key = localStorage.getItem(LOCAL_STORAGE_KEY) !== null;
   try {
-    const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const current = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
     if (hasV2Key) return normalizeEvents(current);
   } catch {
     // ignore
   }
 
   try {
-    const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "{}");
+    const legacy = JSON.parse(localStorage.getItem(LOCAL_LEGACY_STORAGE_KEY) || "{}");
     return normalizeEvents(legacy);
   } catch {
     return [];
   }
 }
 
-function persistEvents() {
+function clearLocalEventStorage() {
   try {
-    const clean = sanitizeEvents(events.value);
-    events.value = clean;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
-    // Prevent old migrated data from reappearing after deletes.
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    localStorage.setItem(LOCAL_STORAGE_KEY, "[]");
+    localStorage.removeItem(LOCAL_LEGACY_STORAGE_KEY);
   } catch {
     // ignore
+  }
+}
+
+function persistEventsToLocal(list = events.value) {
+  try {
+    const clean = sanitizeEvents(list);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(clean));
+    localStorage.removeItem(LOCAL_LEGACY_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+async function loadEventsFromDbWithLocalMigration() {
+  let dbEvents = [];
+  try {
+    dbEvents = sanitizeEvents(await loadCalendarEvents());
+  } catch {
+    events.value = sanitizeEvents(loadEventsFromLocal());
+    persistEventsToLocal(events.value);
+    return;
+  }
+
+  if (dbEvents.length) {
+    events.value = dbEvents;
+    clearLocalEventStorage();
+    return;
+  }
+
+  const localEvents = sanitizeEvents(loadEventsFromLocal());
+  if (!localEvents.length) {
+    events.value = [];
+    return;
+  }
+
+  try {
+    await importCalendarEvents(localEvents);
+    events.value = sanitizeEvents(await loadCalendarEvents());
+    clearLocalEventStorage();
+  } catch {
+    // If import fails, keep local events visible.
+    events.value = localEvents;
   }
 }
 
@@ -923,7 +969,7 @@ async function loadDeadlinesForMonth() {
   deadlinesByDate.value = map;
 }
 
-function addEvent() {
+async function addEvent() {
   const title = eventTitle.value.trim();
   if (!title) return;
 
@@ -932,8 +978,7 @@ function addEvent() {
   const pickedColor = pickAvailableColorForDate(targetDate, eventColor.value);
   eventColor.value = pickedColor;
 
-  const event = {
-    id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+  const eventDraft = {
     title,
     note: eventNote.value.trim(),
     date: targetDate,
@@ -942,11 +987,21 @@ function addEvent() {
     clientId: eventClientId.value || "",
     houseId: eventHouseId.value || "",
     repeat: eventRepeat.value,
-    createdAt: new Date().toISOString(),
   };
 
-  events.value = [event, ...events.value];
-  persistEvents();
+  try {
+    const saved = await createCalendarEvent(eventDraft);
+    events.value = sanitizeEvents([saved, ...events.value]);
+  } catch {
+    const localEvent = {
+      ...eventDraft,
+      id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+      createdAt: new Date().toISOString(),
+    };
+    events.value = sanitizeEvents([localEvent, ...events.value]);
+    persistEventsToLocal(events.value);
+  }
+
   eventTitle.value = "";
   eventNote.value = "";
   eventRepeat.value = "none";
@@ -963,31 +1018,46 @@ function addEvent() {
   }
 }
 
-function removeEvent(eventId) {
+async function removeEvent(eventId) {
   const target = events.value.find((event) => event.id === eventId);
   const label = (target?.title || "").trim() || "this event";
   if (!confirm(`Delete "${label}"?`)) return;
 
-  events.value = events.value.filter((event) => {
-    if (event.id === eventId) return false;
-    // Also remove duplicate migrated copies that differ only by id.
-    if (!target) return true;
-    return !(
-      event.title === target.title &&
-      event.date === target.date &&
-      (event.type || "meeting") === (target.type || "meeting") &&
-      (event.repeat || "none") === (target.repeat || "none") &&
-      (event.clientId || "") === (target.clientId || "") &&
-      (event.houseId || "") === (target.houseId || "")
-    );
-  });
+  try {
+    await removeCalendarEvent(eventId);
+  } catch {
+    events.value = events.value.filter((event) => event.id !== eventId);
+    persistEventsToLocal(events.value);
+    selectedCalendarItem.value = null;
+    selectedDayDetails.value = null;
+    return;
+  }
+
+  events.value = events.value.filter((event) => event.id !== eventId);
   selectedCalendarItem.value = null;
   selectedDayDetails.value = null;
-  persistEvents();
 }
 
-function resetCalendar() {
+async function resetCalendar() {
   if (!confirm("Reset calendar events? This will remove all saved events.")) return;
+
+  try {
+    await resetCalendarEvents();
+  } catch {
+    events.value = [];
+    persistEventsToLocal(events.value);
+    selectedCalendarItem.value = null;
+    selectedDayDetails.value = null;
+    eventTitle.value = "";
+    eventNote.value = "";
+    eventType.value = "meeting";
+    eventClientId.value = "";
+    eventHouseId.value = "";
+    eventRepeat.value = "none";
+    eventColor.value = CALENDAR_COLOR_PRESETS[0];
+    return;
+  }
+
   events.value = [];
   selectedCalendarItem.value = null;
   selectedDayDetails.value = null;
@@ -998,12 +1068,7 @@ function resetCalendar() {
   eventHouseId.value = "";
   eventRepeat.value = "none";
   eventColor.value = CALENDAR_COLOR_PRESETS[0];
-  try {
-    localStorage.setItem(STORAGE_KEY, "[]");
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
+  clearLocalEventStorage();
 }
 
 function openEventDetails(event) {
@@ -1080,11 +1145,10 @@ async function loadEventLinkOptions() {
   }
 }
 
-onMounted(() => {
-  events.value = sanitizeEvents(events.value);
+onMounted(async () => {
   if (!eventColor.value) eventColor.value = CALENDAR_COLOR_PRESETS[0];
   eventColor.value = normalizeHexColor(eventColor.value);
-  persistEvents();
+  await loadEventsFromDbWithLocalMigration();
   loadDeadlinesForMonth();
   loadEventLinkOptions();
 });

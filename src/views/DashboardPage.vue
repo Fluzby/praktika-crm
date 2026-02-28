@@ -577,6 +577,7 @@ import { useT } from "../lib/i18n";
 import { settings } from "../lib/settings";
 import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { loadTaskCalendarSummary } from "../lib/tasksBackend";
+import { loadCalendarEvents } from "../lib/calendarEventsBackend";
 import { useTopbarActions } from "../lib/topbarActions";
 
 const clientsCount = ref(null);
@@ -588,8 +589,6 @@ const recentHouses = ref([]);
 const activity = ref([]);
 const taskSummary = ref({ overdue: 0, today: 0, upcoming: 0, totalOpen: 0, recent: [] });
 const calendarWeekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const CAL_EVENTS_KEY = "crm_calendar_events_v2";
-const CAL_EVENTS_LEGACY_KEY = "crm_calendar_events_v1";
 const dashboardViewYear = ref(new Date().getFullYear());
 const dashboardViewMonth = ref(new Date().getMonth());
 const dashboardSelectedDate = ref("");
@@ -699,36 +698,6 @@ const sanitizeDashboardEvents = (list) =>
       repeat: item.repeat === "yearly" ? "yearly" : "none",
     }))
     .filter((item) => item.title.length > 0 && isValidDateKey(item.date));
-
-const loadDashboardEvents = () => {
-  try {
-    const v2 = JSON.parse(localStorage.getItem(CAL_EVENTS_KEY) || "[]");
-    if (Array.isArray(v2) && v2.length) return sanitizeDashboardEvents(v2);
-  } catch {
-    // ignore
-  }
-
-  try {
-    const legacy = JSON.parse(localStorage.getItem(CAL_EVENTS_LEGACY_KEY) || "{}");
-    const migrated = [];
-    for (const [dateKey, rows] of Object.entries(legacy || {})) {
-      for (const row of rows || []) {
-        if (!row?.title) continue;
-        migrated.push({
-          id: row.id || `${Date.now()}-${Math.random()}`,
-          title: row.title,
-          date: dateKey,
-          note: row.note || "",
-          color: row.color,
-          repeat: "none",
-        });
-      }
-    }
-    return sanitizeDashboardEvents(migrated);
-  } catch {
-    return [];
-  }
-};
 
 const buildDashboardMonthEventsMap = (year, month) => {
   const map = {};
@@ -1149,7 +1118,11 @@ async function load() {
     recentHouses.value = hRecent.data || [];
     activity.value = a.data || [];
     taskSummary.value = await loadTaskCalendarSummary();
-    dashboardEvents.value = loadDashboardEvents();
+    try {
+      dashboardEvents.value = sanitizeDashboardEvents(await loadCalendarEvents());
+    } catch {
+      dashboardEvents.value = [];
+    }
 
     lastUpdated.value = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
@@ -1285,7 +1258,6 @@ const createClientAndClose = async () => {
 };
 
 onMounted(() => {
-  dashboardEvents.value = loadDashboardEvents();
   load();
   const handler = () => {
     // Keep the dashboard fresh if matches change.
