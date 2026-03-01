@@ -246,13 +246,13 @@
           </div>
         </div>
 
-        <div v-if="isEditing ? edit.tagsInput : (house.tags || []).length" class="glass-soft p-6">
+        <div v-if="isEditing ? edit.tagsInput : normalizeTagList(house.tags).length" class="glass-soft p-6">
           <h2 class="text-sm font-semibold text-white/80 mb-3">
             {{ t.tags }}
           </h2>
 
           <div class="flex flex-wrap gap-2">
-            <span v-for="t in (isEditing ? parseTags(edit.tagsInput) : (house.tags || []))" :key="t" class="chip">
+            <span v-for="t in (isEditing ? parseTagsInput(edit.tagsInput) : normalizeTagList(house.tags))" :key="t" class="chip">
               {{ t }}
             </span>
           </div>
@@ -498,6 +498,7 @@ import {
   setEntityTaskDone,
 } from "../lib/tasksBackend";
 import { archiveEntity } from "../lib/entityActions";
+import { normalizeTagList, parseTagsInput } from "../lib/tags";
 
 const route = useRoute();
 const router = useRouter();
@@ -559,12 +560,6 @@ const filesToUpload = ref([]);
 const onFilesChange = (e) => {
   filesToUpload.value = Array.from(e.target.files || []).slice(0, 10);
 };
-
-const parseTags = (s) =>
-  (s || "")
-    .split(",")
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
 
 const humanizeEnumLikeValue = (value) => {
   if (typeof value !== "string") return value;
@@ -795,7 +790,7 @@ const load = async () => {
     rooms: house.value.rooms ?? null,
     size_m2: house.value.size_m2 ?? null,
     description: house.value.description || "",
-    tagsInput: (house.value.tags || []).join(", "),
+    tagsInput: normalizeTagList(house.value.tags).join(", "),
   };
 
   const p = await supabase
@@ -893,7 +888,7 @@ const saveHouse = async () => {
       rooms: edit.value.rooms ?? null,
       size_m2: edit.value.size_m2 ?? null,
       description: edit.value.description || null,
-      tags: parseTags(edit.value.tagsInput),
+      tags: parseTagsInput(edit.value.tagsInput),
       raw_data: rawDraft.value,
     };
 

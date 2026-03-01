@@ -990,6 +990,14 @@ html.theme-plain body {
   border-color: #e5e5e5;
 }
 
+/* Force fully black text in the AI matching modal for lighter themes. */
+.light .ai-matching-window,
+.light .ai-matching-window *,
+.theme-plain .ai-matching-window,
+.theme-plain .ai-matching-window * {
+  color: #000 !important;
+}
+
 .theme-glass .modal-panel {
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.06);

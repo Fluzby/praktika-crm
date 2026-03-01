@@ -12,6 +12,11 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <select class="input w-[170px]" v-model="propertyKind">
+            <option value="all">{{ t.property_type_all }}</option>
+            <option value="apartment">{{ t.property_type_apartment }}</option>
+            <option value="house">{{ t.property_type_house }}</option>
+          </select>
           <button class="btn-ghost" @click="q = ''" :disabled="!q">{{ t.clear }}</button>
           <div class="text-sm text-white/50">
             {{ filtered.length }} {{ t.results }}
@@ -77,7 +82,7 @@
                 <td class="px-4 py-3 text-white/75 tabular-nums whitespace-nowrap">{{ h.size_m2 ? `${h.size_m2} m²` : "—" }}</td>
                 <td class="px-4 py-3 text-white/85 tabular-nums whitespace-nowrap">€{{ h.price ?? "—" }}</td>
                 <td class="px-4 py-3 text-white/60">
-                  <div class="truncate max-w-[260px]">{{ (h.tags || []).join(", ") || "—" }}</div>
+                  <div class="truncate max-w-[260px]">{{ normalizeTagList(h.tags).join(", ") || "—" }}</div>
                 </td>
                 <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(h.created_at) }}</td>
                 <td class="px-4 py-3 text-right" @click.stop>
@@ -308,6 +313,7 @@ import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { settings } from "../lib/settings";
 import { archiveEntity } from "../lib/entityActions";
 import { useTopbarActions } from "../lib/topbarActions";
+import { normalizeTagList, parseTagsInput } from "../lib/tags";
 
 const router = useRouter();
 
@@ -317,6 +323,7 @@ const error = ref("");
 
 const q = ref("");
 const showAdd = ref(false);
+const propertyKind = ref("all");
 
 const creating = ref(false);
 const createError = ref("");
@@ -337,7 +344,6 @@ useTopbarActions(() => [
   { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
   { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true) },
 ]);
-let searchTimer = null;
 
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
@@ -345,12 +351,6 @@ const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field
 const onFilesChange = (e) => {
   selectedFiles.value = Array.from(e.target.files || []).slice(0, 10);
 };
-
-const parseTags = (s) =>
-  (s || "")
-    .split(",")
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
 
 const filteredGroups = computed(() => {
   const q = fieldSearch.value.trim().toLowerCase();
@@ -500,8 +500,66 @@ const onDeleteHouse = async (houseRow) => {
 };
 
 const filtered = computed(() => {
-  return houses.value;
+  const term = q.value.trim().toLowerCase();
+
+  let rows = houses.value;
+  if (propertyKind.value !== "all") {
+    rows = rows.filter((h) => classifyPropertyType(h) === propertyKind.value);
+  }
+
+  if (!term) return rows;
+
+  return rows.filter((h) => {
+    const haystack = [
+      h.address,
+      h.city,
+      ...(normalizeTagList(h.tags) || []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(term);
+  });
 });
+
+const APARTMENT_TOKENS = [
+  "apartment",
+  "flat",
+  "condo",
+  "korter",
+  "korteri",
+  "korterelamu",
+];
+const HOUSE_TOKENS = [
+  "house",
+  "detached",
+  "townhouse",
+  "villa",
+  "maja",
+  "eramu",
+  "ridamaja",
+  "paarismaja",
+  "suvila",
+];
+
+const classifyPropertyType = (house) => {
+  const fields = [
+    house?.object_type,
+    house?.raw_data?.["Objekti liik"],
+    house?.raw_data?.["Objekti täpsustus"],
+    ...normalizeTagList(house?.tags),
+  ];
+  const haystack = fields
+    .filter((v) => v != null && String(v).trim() !== "")
+    .map((v) => String(v).toLowerCase())
+    .join(" ");
+
+  if (!haystack) return "unknown";
+  if (APARTMENT_TOKENS.some((token) => haystack.includes(token))) return "apartment";
+  if (HOUSE_TOKENS.some((token) => haystack.includes(token))) return "house";
+  return "unknown";
+};
 
 async function load() {
   loading.value = true;
@@ -513,12 +571,6 @@ async function load() {
       .select("*")
       .eq("is_archived", false)
       .order("created_at", { ascending: false });
-
-    const term = q.value.trim();
-    if (term) {
-      const escaped = term.replace(/[%_]/g, "");
-      query = query.or(`address.ilike.%${escaped}%,city.ilike.%${escaped}%`);
-    }
 
     const { data, error: e } = await query;
 
@@ -550,7 +602,7 @@ const createHouse = async () => {
       rooms: toNum(raw["Tube"]),
       size_m2: toNum(raw["Üldpind (m2)"]),
       description: newHouse.value.description || null,
-      tags: parseTags(newHouse.value.tagsInput),
+      tags: parseTagsInput(newHouse.value.tagsInput),
       raw_data: raw,
     };
 
@@ -602,10 +654,4 @@ const createHouseAndClose = async () => {
 };
 
 onMounted(load);
-watch(q, () => {
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    load();
-  }, 220);
-});
 </script>

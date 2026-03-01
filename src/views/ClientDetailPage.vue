@@ -16,7 +16,6 @@
 
       <div class="flex items-center gap-2">
         <button class="btn-ghost" @click="load">{{ t.refresh }}</button>
-        <button class="btn-ghost" @click="openMatches">{{ t.match_houses }}</button>
         <RowActionsMenu
           :archived="!!client?.is_archived"
           @archive="onArchiveClient"
@@ -35,7 +34,7 @@
           <form class="grid gap-4 md:grid-cols-2" novalidate @submit.prevent="save">
             <div class="md:col-span-2">
               <label class="text-sm text-white/60">{{ t.full_name }} *</label>
-              <input ref="fullNameInputEl" class="input mt-1" v-model.trim="edit.full_name" required />
+              <input class="input mt-1" v-model.trim="edit.full_name" required />
             </div>
 
             <div>
@@ -83,17 +82,21 @@
           />
         </div>
 
-        <div class="glass-soft p-4 mt-6">
+        <div class="glass-soft p-4 mt-6 ai-matching-window">
           <div class="flex items-center justify-between mb-3">
             <div class="font-semibold">Recommended Houses</div>
 
-            <label class="text-xs text-white/60 flex items-center gap-2">
-              <input type="checkbox" v-model="hideRejected" />
-              {{ t.hide_rejected }}
-            </label>
+            <div class="flex items-center gap-3">
+              <label class="text-xs text-white/60 flex items-center gap-2">
+                <input type="checkbox" v-model="hideRejected" />
+                {{ t.hide_rejected }}
+              </label>
+              <button class="btn-ghost text-xs" @click="refreshAiMatches(true)">{{ t.re_run_ai }}</button>
+              <button class="btn-ghost text-xs" :disabled="!lastAction" @click="undoLast">{{ t.undo }}</button>
+            </div>
           </div>
 
-          <div v-if="matchedLoading || autoMatching" class="space-y-2">
+          <div v-if="matchesLoading || autoMatching || matchedLoading" class="space-y-2">
             <div class="text-white/60 text-sm">
               {{ autoMatching ? "Finding suggested properties..." : t.loading }}
             </div>
@@ -101,88 +104,86 @@
             <div class="rounded-xl border border-white/10 p-3 animate-pulse bg-white/[0.02]"></div>
           </div>
 
-          <div v-else class="space-y-2">
-            <div
-              v-for="m in recommendedMatches"
-              :key="m.house.id"
-              class="rounded-xl border border-white/10 p-3 hover:bg-white/[0.03] transition"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 cursor-pointer" @click="$router.push(`/houses/${m.house.id}`)">
-                  <div class="font-medium truncate">{{ m.house.address }}</div>
-                  <div class="text-xs text-white/60 mt-1">
-                    {{ m.house.city || "—" }} • {{ m.house.rooms ?? "?" }} {{ t.rooms }} • €{{ m.house.price ?? "—" }}
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <span
-                    v-if="m.ai_confidence != null"
-                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70"
-                  >
-                    {{ m.ai_confidence }}%
-                  </span>
-
-                  <span class="text-xs px-2 py-0.5 rounded-full" :class="statusPill(m.status)">
-                    {{ statusLabel(m.status) }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap gap-2 mt-3">
-                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'contacted')">{{ t.contacted }}</button>
-                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'viewed')">{{ t.viewed }}</button>
-                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'interested')">{{ t.interested }}</button>
-                <button class="btn-ghost text-xs" @click="setMatchStatus(m.house.id, 'rejected')">{{ t.rejected }}</button>
-              </div>
-            </div>
-
-            <div v-if="recommendedMatches.length === 0" class="text-white/60 text-sm">
-              No recommended houses yet.
-            </div>
-          </div>
-        </div>
-
-        <div class="glass-soft p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="font-semibold">{{ t.matched_houses }}</div>
-            <div class="text-xs text-white/50">{{ visibleMatched.length }} total</div>
-          </div>
-
-          <div v-if="matchedLoading || autoMatching" class="text-white/60 text-sm">
-            {{ autoMatching ? "Refreshing matches..." : t.loading }}
+          <div v-else-if="matchesError" class="text-red-300 text-sm">
+            {{ matchesError }}
           </div>
 
           <div v-else class="space-y-2">
             <div
-              v-for="m in visibleMatched"
-              :key="`all-${m.house.id}`"
-              class="rounded-xl border border-white/10 p-3 hover:bg-white/[0.03] transition"
+              v-for="h in visibleAiHouseCards"
+              :key="h.id"
+              class="rounded-xl border p-4 transition"
+              :class="h._picked
+                ? 'border-emerald-400/60 bg-emerald-400/8'
+                : 'border-white/12 bg-white/[0.02] hover:bg-white/[0.05]'"
             >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 cursor-pointer" @click="$router.push(`/houses/${m.house.id}`)">
-                  <div class="font-medium truncate">{{ m.house.address }}</div>
-                  <div class="text-xs text-white/60 mt-1">
-                    {{ m.house.city || "—" }} • {{ m.house.rooms ?? "?" }} {{ t.rooms }} • €{{ m.house.price ?? "—" }}
-                  </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="font-semibold text-white truncate cursor-pointer" @click="$router.push(`/houses/${h.id}`)">
+                  {{ h.address }}
                 </div>
 
                 <div class="flex items-center gap-2">
                   <span
-                    v-if="m.ai_confidence != null"
-                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                    v-if="h.rank <= 3"
+                    class="text-xs px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-200"
                   >
-                    {{ m.ai_confidence }}%
+                    ✨ {{ t.top }} {{ h.rank }}
                   </span>
-                  <span class="text-xs px-2 py-0.5 rounded-full" :class="statusPill(m.status)">
-                    {{ statusLabel(m.status) }}
+
+                  <span
+                    class="text-xs px-2 py-0.5 rounded-full"
+                    :class="
+                      (h.confidence ?? 0) >= 80 ? 'bg-emerald-500/15 text-emerald-200'
+                      : (h.confidence ?? 0) >= 55 ? 'bg-amber-400/15 text-amber-200'
+                      : 'bg-white/10 text-white/70'
+                    "
+                  >
+                    {{ h.confidence ?? 0 }}%
                   </span>
                 </div>
               </div>
+
+              <div class="text-xs text-white/75 mt-1">
+                {{ h.city || "—" }} • {{ h.rooms ?? "?" }} {{ t.rooms }} • €{{ h.price ?? "—" }}
+              </div>
+
+              <div
+                v-if="h.reason"
+                class="text-sm text-white/80 leading-relaxed mt-2"
+              >
+                {{ h.reason }}
+              </div>
+
+              <div class="flex justify-end mt-3 gap-2">
+                <button
+                  class="text-xs px-3 py-1 rounded-md border border-red-400/40 bg-red-500/18 text-red-100 hover:bg-red-500/28"
+                  @click.stop="rejectHouse(h)"
+                >
+                  {{ t.reject_hide }}
+                </button>
+
+                <button
+                  class="text-xs px-3 py-1 rounded-md"
+                  :class="h._picked
+                    ? 'border border-white/15 bg-white/10 text-white/60 cursor-not-allowed'
+                    : 'border border-emerald-300/40 bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30'"
+                  :disabled="h._picked"
+                  @click.stop="pickHouse(h)"
+                >
+                  {{ h._picked ? t.picked : t.pick_for_client }}
+                </button>
+
+                <button
+                  class="text-xs px-3 py-1 rounded-md border border-white/15 bg-white/10 text-white hover:bg-white/20"
+                  @click.stop="$router.push(`/houses/${h.id}`)"
+                >
+                  {{ t.view_house }}
+                </button>
+              </div>
             </div>
 
-            <div v-if="visibleMatched.length === 0" class="text-white/60 text-sm">
-              {{ t.no_matched_houses }}
+            <div v-if="visibleAiHouseCards.length === 0" class="text-white/60 text-sm">
+              {{ t.no_good_matches }}
             </div>
           </div>
         </div>
@@ -306,123 +307,6 @@
       </aside>
     </div>
 
-    <Modal :open="showMatches" title="Most Recommended" @close="showMatches=false">
-      <div class="flex flex-col gap-3">
-        <div v-if="matchesLoading" class="space-y-2">
-          <div class="glass-soft h-16 animate-pulse"></div>
-          <div class="glass-soft h-16 animate-pulse"></div>
-          <div class="glass-soft h-16 animate-pulse"></div>
-        </div>
-
-        <div v-else-if="matchesError" class="text-red-300">
-          {{ matchesError }}
-        </div>
-
-        <div
-          v-else
-          class="glass-soft rounded-xl p-3 max-h-[420px] overflow-y-auto space-y-2 ai-matchup-list"
-        >
-          <div
-            v-for="(h, i) in aiHouseCards"
-            :key="h.id"
-            class="rounded-lg cursor-pointer transition ai-card"
-            :class="[
-              'rounded-xl border p-4 transition',
-              selectedIndex === i
-                ? 'border-emerald-400/60 bg-emerald-400/8'
-                : 'border-white/12 bg-white/[0.02] hover:bg-white/[0.05]'
-            ]"
-          >
-            <div class="flex items-center justify-between gap-2">
-              <div class="font-semibold text-white truncate">
-                {{ h.address }}
-              </div>
-
-              <div class="flex items-center gap-2">
-                <span
-                  v-if="h.rank <= 3"
-                  class="text-xs px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-200"
-                >
-                  ✨ {{ t.top }} {{ h.rank }}
-                </span>
-
-                <span
-                  class="text-xs px-2 py-0.5 rounded-full"
-                  :class="
-                    (h.confidence ?? 0) >= 80 ? 'bg-emerald-500/15 text-emerald-200'
-                    : (h.confidence ?? 0) >= 55 ? 'bg-amber-400/15 text-amber-200'
-                    : 'bg-white/10 text-white/70'
-                  "
-                >
-                  {{ h.confidence ?? 0 }}%
-                </span>
-              </div>
-            </div>
-
-            <div class="text-xs text-white/75 mt-1">
-              {{ h.city || "—" }} • {{ h.rooms ?? "?" }} {{ t.rooms }} • €{{ h.price ?? "—" }}
-            </div>
-
-            <div
-              v-if="h.reason"
-              class="text-sm text-white/80 leading-relaxed mt-2"
-            >
-              {{ h.reason }}
-            </div>
-
-            <div class="flex justify-end mt-3 gap-2">
-              <button
-                class="text-xs px-3 py-1 rounded-md border border-red-400/40 bg-red-500/18 text-red-100 hover:bg-red-500/28"
-                @click.stop="rejectHouse(h)"
-              >
-                {{ t.reject_hide }}
-              </button>
-
-              <button
-                class="text-xs px-3 py-1 rounded-md"
-                :class="h._picked
-                  ? 'border border-white/15 bg-white/10 text-white/60 cursor-not-allowed'
-                  : 'border border-emerald-300/40 bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30'"
-                :disabled="h._picked"
-                @click.stop="pickHouse(h)"
-              >
-                {{ h._picked ? t.picked : t.pick_for_client }}
-              </button>
-
-              <button
-                class="text-xs px-3 py-1 rounded-md border border-white/15 bg-white/10 text-white hover:bg-white/20"
-                @click.stop="$router.push(`/houses/${h.id}`)"
-              >
-                {{ t.view_house }}
-              </button>
-            </div>
-          </div>
-
-          <div v-if="!aiHouseCards.length" class="text-white/60 text-sm">
-            {{ t.no_good_matches }}
-          </div>
-        </div>
-      </div>
-      <div v-if="settings.shortcuts" class="text-xs text-white/40 mt-4 flex gap-4">
-        <span>⏎ {{ t.pick_shortcut }}</span>
-        <span>R {{ t.reject_shortcut }}</span>
-        <span>U {{ t.undo_shortcut }}</span>
-        <span>Esc {{ t.close_shortcut }}</span>
-      </div>
-      <template #footer>
-        <div class="flex items-center justify-between w-full">
-          <button class="btn-ghost" @click="openMatches(true)">{{ t.re_run_ai }}</button>
-
-          <button
-            class="btn-ghost"
-            :disabled="!lastAction"
-            @click="undoLast"
-          >
-            {{ t.undo }}
-          </button>
-        </div>
-      </template>
-    </Modal>
   </div>
 
   <div v-else class="text-white/60">{{ t.loading }}</div>
@@ -446,7 +330,6 @@ import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { settings } from "../lib/settings";
 import { logActivity } from "../lib/activity";
-import Modal from "../components/Modal.vue";
 import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { useT } from "../lib/i18n";
 import {
@@ -464,6 +347,7 @@ import {
   setEntityTaskDone,
 } from "../lib/tasksBackend";
 import { archiveEntity } from "../lib/entityActions";
+import { parseTagsInput } from "../lib/tags";
 
 const route = useRoute();
 const router = useRouter();
@@ -475,12 +359,10 @@ const saving = ref(false);
 const error = ref("");
 const ok = ref(false);
 
-const showMatches = ref(false);
 const matchesLoading = ref(false);
 const matchesError = ref("");
 const aiHouseCards = ref([]);
 const lastAction = ref(null);
-const selectedIndex = ref(0);
 
 const matched = ref([]);
 const matchedLoading = ref(false);
@@ -494,7 +376,6 @@ const clientTasks = ref([]);
 
 const toastMsg = ref("");
 const toastType = ref("info");
-const fullNameInputEl = ref(null);
 let toastTimer = null;
 
 const t = useT();
@@ -502,11 +383,8 @@ const t = useT();
 const clientPipelineLabel = computed(() => CLIENT_PIPELINE_LABELS[clientStatus.value] || "New Lead");
 const openClientTasks = computed(() => clientTasks.value.filter((x) => !x.done));
 const interestedMatchesCount = computed(() => matched.value.filter((x) => x.status === "interested").length);
-const visibleMatched = computed(() =>
-  hideRejected.value ? matched.value.filter((x) => x.status !== "rejected") : matched.value
-);
-const recommendedMatches = computed(() =>
-  visibleMatched.value.filter((x) => x.source === "ai" || x.status === "suggested")
+const visibleAiHouseCards = computed(() =>
+  hideRejected.value ? aiHouseCards.value.filter((x) => x.status !== "rejected") : aiHouseCards.value
 );
 const timelineEntries = computed(() => {
   const supa = (activity.value || []).map((a) => ({
@@ -579,45 +457,6 @@ const loadLocalCRMState = async () => {
   } catch {
     clientTasks.value = [];
   }
-};
-
-const statusPill = (s) => {
-  if (s === "interested") return "bg-emerald-500/15 text-emerald-200";
-  if (s === "viewed") return "bg-fuchsia-500/15 text-fuchsia-200";
-  if (s === "contacted") return "bg-sky-500/15 text-sky-200";
-  if (s === "rejected") return "bg-red-500/15 text-red-200";
-  return "bg-white/10 text-white/70";
-};
-
-const statusLabel = (s) => {
-  const map = {
-    suggested: t.value.suggested,
-    contacted: t.value.contacted,
-    viewed: t.value.viewed,
-    interested: t.value.interested,
-    rejected: t.value.rejected,
-  };
-  return map[s] || t.value.suggested;
-};
-
-const setMatchStatus = async (houseId, status) => {
-  const { error } = await supabase
-    .from("house_matches")
-    .update({ status })
-    .eq("client_id", client.value.id)
-    .eq("house_id", houseId);
-
-  if (error) {
-    console.error("setMatchStatus error:", error);
-    return;
-  }
-  await loadMatched();
-  logLocalActivity({
-    entity: "client",
-    entity_id: id,
-    type: "match_status",
-    label: `Property match marked as ${status}`,
-  });
 };
 
 const onClientStatusChange = () => {
@@ -696,12 +535,12 @@ const load = async () => {
   await loadLocalCRMState();
 };
 
-const openMatches = async (force = false) => {
-  showMatches.value = true;
+const refreshAiMatches = async (force = false) => {
+  if (!client.value?.id) return;
   matchesLoading.value = true;
+  autoMatching.value = true;
   matchesError.value = "";
   aiHouseCards.value = [];
-  selectedIndex.value = 0;
 
   try {
     const { data, error } = await supabase.functions.invoke("smart-match", {
@@ -716,6 +555,34 @@ const openMatches = async (force = false) => {
     const isUuid = (s) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
     const ids = results.map(r => r.house_id).filter(isUuid);
+    if (!ids.length) {
+      aiHouseCards.value = [];
+      await loadMatched();
+      return;
+    }
+
+    const { data: existing, error: existingErr } = await supabase
+      .from("house_matches")
+      .select("house_id, status")
+      .eq("client_id", client.value.id)
+      .in("house_id", ids);
+    if (existingErr) throw existingErr;
+
+    const existingByHouseId = new Map((existing || []).map((m) => [m.house_id, m.status]));
+    const rows = results.slice(0, settings.aiTopN ?? 5).map((r) => ({
+      client_id: client.value.id,
+      house_id: r.house_id,
+      source: "ai",
+      status: existingByHouseId.get(r.house_id) || "suggested",
+      ai_confidence: r.confidence ?? null,
+      ai_reason: r.reason ?? null,
+    }));
+
+    const { error: upsertErr } = await supabase
+      .from("house_matches")
+      .upsert(rows, { onConflict: "client_id,house_id" });
+    if (upsertErr) throw upsertErr;
+
     const meta = new Map(
       results.map((r, i) => [r.house_id, { reason: r.reason, rank: i + 1, confidence: r.confidence ?? 0 }])
     );
@@ -733,74 +600,16 @@ const openMatches = async (force = false) => {
       .map((id) => {
         const h = byId.get(id);
         const m = meta.get(id);
-        return h && m ? { ...h, reason: m.reason, rank: m.rank, confidence: m.confidence } : null;
+        const status = existingByHouseId.get(id) || "suggested";
+        const picked = status === "contacted" || status === "viewed" || status === "interested";
+        return h && m ? { ...h, reason: m.reason, rank: m.rank, confidence: m.confidence, status, _picked: picked } : null;
       })
       .filter(Boolean);
-
-    aiHouseCards.value = aiHouseCards.value.filter(h => h.status !== "rejected");
-
-    const rejectedSet = new Set(
-      matched.value
-        .filter(m => m.status === "rejected")
-        .map(m => m.house.id)
-    );
-
-    aiHouseCards.value = aiHouseCards.value.filter(
-      h => !rejectedSet.has(h.id)
-    );
+    await loadMatched();
   } catch (e) {
     matchesError.value = e?.message || String(e);
   } finally {
     matchesLoading.value = false;
-  }
-};
-
-const autoPopulateSuggestedMatches = async (force = false) => {
-  if (!client.value?.id) return;
-  autoMatching.value = true;
-
-  try {
-    const { data, error } = await supabase.functions.invoke("smart-match", {
-      body: { client_id: client.value.id, force, top_n: settings.aiTopN },
-    });
-    if (error) throw error;
-
-    const results = Array.isArray(data) ? data : [];
-    if (!results.length) return;
-
-    const ids = results
-      .map((r) => r.house_id)
-      .filter((v) => typeof v === "string" && v.length > 0);
-
-    if (!ids.length) return;
-
-    const { data: existing, error: existingErr } = await supabase
-      .from("house_matches")
-      .select("house_id, status")
-      .eq("client_id", client.value.id)
-      .in("house_id", ids);
-    if (existingErr) throw existingErr;
-
-    const existingByHouseId = new Map((existing || []).map((m) => [m.house_id, m.status]));
-
-    const rows = results.slice(0, settings.aiTopN ?? 5).map((r) => ({
-      client_id: client.value.id,
-      house_id: r.house_id,
-      source: "ai",
-      status: existingByHouseId.get(r.house_id) || "suggested",
-      ai_confidence: r.confidence ?? null,
-      ai_reason: r.reason ?? null,
-    }));
-
-    const { error: upsertErr } = await supabase
-      .from("house_matches")
-      .upsert(rows, { onConflict: "client_id,house_id" });
-    if (upsertErr) throw upsertErr;
-
-    await loadMatched();
-  } catch (e) {
-    console.error("autoPopulateSuggestedMatches error:", e);
-  } finally {
     autoMatching.value = false;
   }
 };
@@ -888,7 +697,8 @@ const rejectHouse = async (h) => {
 
     toast(t.value.rejected_hidden_toast, "info");
 
-    aiHouseCards.value = aiHouseCards.value.filter((x) => x.id !== h.id);
+    h.status = "rejected";
+    h._picked = false;
 
     notifyMatchChanged(client.value.id, h.id);
   } catch (e) {
@@ -914,78 +724,12 @@ const undoLast = async () => {
 
     toast(t.value.undo_toast, "info");
 
-    await openMatches(false);
+    await refreshAiMatches(false);
 
     notifyMatchChanged(a.client_id, a.house_id);
   } catch (e) {
     console.error("undoLast error:", e);
     toast(e?.message || String(e), "error");
-  }
-};
-
-const isTypingContext = (target) => {
-  if (!(target instanceof Element)) return false;
-  const tag = target.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  if (target.isContentEditable) return true;
-  return !!target.closest('[contenteditable="true"]');
-};
-
-const onKeydown = (e) => {
-  if (!settings.shortcuts) return;
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (isTypingContext(e.target)) return;
-
-  if (!showMatches.value) {
-    if (e.key === "e" || e.key === "E") {
-      e.preventDefault();
-      fullNameInputEl.value?.focus?.();
-      fullNameInputEl.value?.select?.();
-      return;
-    }
-    if (e.key === "r" || e.key === "R") {
-      e.preventDefault();
-      load();
-    }
-    return;
-  }
-
-  if (!aiHouseCards.value.length) return;
-
-  const max = aiHouseCards.value.length - 1;
-
-  switch (e.key) {
-    case "ArrowDown":
-      e.preventDefault();
-      selectedIndex.value = Math.min(selectedIndex.value + 1, max);
-      break;
-
-    case "ArrowUp":
-      e.preventDefault();
-      selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
-      break;
-
-    case "Enter":
-      e.preventDefault();
-      pickHouse(aiHouseCards.value[selectedIndex.value]);
-      break;
-
-    case "r":
-    case "R":
-      e.preventDefault();
-      rejectHouse(aiHouseCards.value[selectedIndex.value]);
-      break;
-
-    case "u":
-    case "U":
-      e.preventDefault();
-      undoLast();
-      break;
-
-    case "Escape":
-      e.preventDefault();
-      showMatches.value = false;
-      break;
   }
 };
 
@@ -1011,10 +755,7 @@ const save = async () => {
       max_price: edit.value.max_price ?? null,
       min_rooms: edit.value.min_rooms ?? null,
       max_rooms: edit.value.max_rooms ?? null,
-      preferred_tags: (edit.value.preferred_tags_input || "")
-        .split(",")
-        .map(t => t.trim().toLowerCase())
-        .filter(Boolean),
+      preferred_tags: parseTagsInput(edit.value.preferred_tags_input),
     })
     .eq("id", id);
 
@@ -1045,21 +786,19 @@ onMounted(async () => {
   await loadMatched();
   await loadActivity();
 
-  // Auto-run AI suggestions in the background and load them into the suggested area.
+  // Auto-run AI suggestions and render the best matches directly in the page list.
   if (client.value?.id) {
-    await autoPopulateSuggestedMatches(false);
+    await refreshAiMatches(false);
   }
 
   const handler = (e) => {
     if (e?.detail?.clientId === client.value?.id) {
       loadMatched();
       loadActivity();
+      refreshAiMatches(false);
     }
   };
   window.addEventListener("match-changed", handler);
   onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
-
-  window.addEventListener("keydown", onKeydown);
-  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 });
 </script>

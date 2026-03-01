@@ -182,7 +182,7 @@
                   class="absolute right-1.5 bottom-1 rounded px-1 py-0.5 text-[10px] leading-none"
                   style="background: rgba(26,115,232,0.18); color: #1a73e8;"
                 >
-                  {{ day.taskCount }}
+                  {{ formatTaskCount(day.taskCount) }}
                 </div>
               </button>
             </div>
@@ -212,6 +212,8 @@
                   :key="`tk-${task.id}`"
                   class="rounded-md border px-2 py-1.5"
                   style="border-color: var(--shell-border-soft);"
+                  :class="task.entityId ? 'cursor-pointer hover:bg-white/[0.05]' : ''"
+                  @click="task.entityId && openTaskEntity(task)"
                 >
                   <div class="font-medium">• {{ task.title }}</div>
                   <div class="opacity-70 flex items-center justify-between gap-2">
@@ -220,7 +222,7 @@
                       v-if="task.entityId"
                       class="btn-ghost text-[11px] px-2 py-1"
                       type="button"
-                      @click="openTaskEntity(task)"
+                      @click.stop="openTaskEntity(task)"
                     >
                       Open
                     </button>
@@ -242,25 +244,39 @@
               <span class="text-xs text-white/50">{{ taskSummary.totalOpen }} open</span>
             </div>
             <div class="grid grid-cols-3 gap-2 mt-3 text-sm">
-              <div class="rounded-xl border border-red-500/20 bg-red-500/8 p-3">
+              <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
                 <div class="text-xs text-white/50">Overdue</div>
-                <div class="font-semibold mt-1">{{ taskSummary.overdue }}</div>
+                <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.overdue }}</div>
+                <div class="text-[11px] text-white/45 mt-1">Needs attention</div>
               </div>
-              <div class="rounded-xl border border-amber-500/20 bg-amber-500/8 p-3">
+              <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
                 <div class="text-xs text-white/50">Today</div>
-                <div class="font-semibold mt-1">{{ taskSummary.today }}</div>
+                <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.today }}</div>
+                <div class="text-[11px] text-white/45 mt-1">Due now</div>
               </div>
-              <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div class="rounded-xl border border-sky-500/25 bg-sky-500/8 p-3">
                 <div class="text-xs text-white/50">Upcoming</div>
-                <div class="font-semibold mt-1">{{ taskSummary.upcoming }}</div>
+                <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.upcoming }}</div>
+                <div class="text-[11px] text-white/45 mt-1">Planned next</div>
               </div>
             </div>
             <div v-if="taskSummary.recent.length" class="mt-3 space-y-2 text-xs">
-              <div v-for="task in taskSummary.recent" :key="task.id" class="rounded-lg border border-white/10 px-3 py-2">
-                <div class="truncate">{{ task.title }}</div>
-                <div class="text-white/45 mt-1">{{ task.dueDate || "No due date" }} • {{ task.entityType }}</div>
-              </div>
+              <button
+                v-for="task in taskSummary.recent"
+                :key="task.id"
+                class="w-full text-left rounded-lg border border-white/10 px-3 py-2 hover:bg-white/[0.05] transition"
+                type="button"
+                :disabled="!task.entityId"
+                @click="openTaskEntity(task)"
+              >
+                <div class="truncate font-medium">{{ task.title }}</div>
+                <div class="text-white/45 mt-1 flex items-center justify-between gap-2">
+                  <span>{{ task.dueDate || "No due date" }} • {{ task.entityType }}</span>
+                  <span v-if="task.entityId" class="text-white/65">Open</span>
+                </div>
+              </button>
             </div>
+            <div v-else class="mt-3 text-xs text-white/45">No follow-ups yet.</div>
           </div>
 
           <h2 class="font-semibold mb-3">{{ t.recent_activity }}</h2>
@@ -579,6 +595,7 @@ import { HOUSE_FIELD_GROUPS } from "@/config/houseFields.en";
 import { loadTaskCalendarSummary } from "../lib/tasksBackend";
 import { loadCalendarEvents } from "../lib/calendarEventsBackend";
 import { useTopbarActions } from "../lib/topbarActions";
+import { parseTagsInput } from "../lib/tags";
 
 const clientsCount = ref(null);
 const housesCount = ref(null);
@@ -840,6 +857,13 @@ const openTaskEntity = (task) => {
   }
 };
 
+const formatTaskCount = (count) => {
+  const n = Number(count || 0);
+  if (n <= 0) return "";
+  if (n > 9) return "9+";
+  return String(n);
+};
+
 const dashboardPrevMonth = () => {
   if (dashboardViewMonth.value === 0) {
     dashboardViewMonth.value = 11;
@@ -956,12 +980,6 @@ const availabilitySegments = computed(() => {
 const onHouseFilesChange = (e) => {
   houseFiles.value = Array.from(e.target.files || []).slice(0, 10);
 };
-
-const parseTags = (s) =>
-  (s || "")
-    .split(",")
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
 
 const randomId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
@@ -1151,7 +1169,7 @@ const createHouse = async () => {
       rooms: toNum(raw["Tube"]),
       size_m2: toNum(raw["Üldpind (m2)"]),
       description: newHouse.value.description || null,
-      tags: parseTags(newHouse.value.tagsInput),
+      tags: parseTagsInput(newHouse.value.tagsInput),
       raw_data: raw,
     };
 

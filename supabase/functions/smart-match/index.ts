@@ -29,6 +29,14 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const { data: client, error: cErr } = await supabase
+      .from("clients")
+      .select("id, full_name, notes, min_price, max_price, min_rooms, max_rooms, preferred_tags, updated_at")
+      .eq("id", client_id)
+      .single();
+
+    if (cErr || !client) throw cErr;
+
     if (!force) {
       const { data: cached } = await supabase
         .from("ai_match_cache")
@@ -37,10 +45,13 @@ serve(async (req) => {
         .maybeSingle();
 
       if (cached?.results) {
-        const ageMs = Date.now() - new Date(cached.updated_at).getTime();
+        const cacheTime = new Date(cached.updated_at).getTime();
+        const clientUpdatedAt = client.updated_at ? new Date(client.updated_at).getTime() : 0;
+        const ageMs = Date.now() - cacheTime;
         const oneDay = 24 * 60 * 60 * 1000;
+        const cacheIsFresh = ageMs < oneDay && cacheTime >= clientUpdatedAt;
 
-        if (ageMs < oneDay) {
+        if (cacheIsFresh) {
           return new Response(JSON.stringify(cached.results.slice(0, topN)), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -48,14 +59,6 @@ serve(async (req) => {
         }
       }
     }
-
-    const { data: client, error: cErr } = await supabase
-      .from("clients")
-      .select("id, full_name, notes, min_price, max_price, min_rooms, max_rooms, preferred_tags")
-      .eq("id", client_id)
-      .single();
-
-    if (cErr || !client) throw cErr;
 
     const { data: rejected } = await supabase
       .from("house_matches")
@@ -109,22 +112,63 @@ serve(async (req) => {
     const isUuid = (s: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
     const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+    const normalizeTag = (v: unknown) => {
+      let s = String(v ?? "").trim();
+      if (!s) return "";
+      if (/^types\./i.test(s)) {
+        s = s.replace(/^types\./i, "");
+        if (s.includes(".")) s = s.split(".").pop() || s;
+      }
+      return s.replace(/_/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+    };
+    const preferredTags = (client.preferred_tags || []).map(normalizeTag).filter(Boolean);
 
     const rankBatch = async (batchHouses: any[], batchTopN: number) => {
-      const prompt = `
-You are a real estate assistant.
+      const systemPrompt = `
+You are a strict real-estate matching engine.
 
-LANGUAGE RULE:
-- Client notes may be written in different languages (e.g. Estonian or English).
-- Detect the language of the client notes.
-- Write the "reason" in the SAME language as the client notes.
-- Do NOT translate unless explicitly asked.
+Goal:
+- Rank houses from best to worst for this specific client.
+- Understand and use ALL details from client notes, including small details.
 
-IMPORTANT RULE:
-Some houses have already been rejected by this client.
-Those houses MUST NOT be suggested again.
-If a house is not listed below, assume it is allowed.
+Priority of truth:
+1) Explicit statements in client notes (highest priority).
+2) Structured client preferences.
+3) Reasonable inference only when not explicit.
 
+Note understanding rules:
+- Parse notes carefully, including typos, shorthand, mixed languages, and informal wording.
+- Capture positives (wants), negatives (does not want), and hard constraints (must/must not/deal-breakers).
+- Treat exclusions and negations as strict constraints.
+- If notes conflict with structured preferences, notes win.
+- If notes include updated intent (for example "now", "instead", "changed"), prefer the newer intent.
+- Never ignore a concrete detail that can affect ranking.
+- Preferred tags are a strong ranking signal; if two houses are otherwise similar, rank the one matching more preferred tags higher.
+
+Language rule:
+- Detect the dominant language of client notes.
+- Write "reason" in the same dominant language.
+- If notes are mixed-language, keep "reason" in the dominant language and keep important terms as written.
+- Do not translate unless explicitly asked.
+
+Scoring rules:
+- Confidence is an integer 0-100.
+- 90-100: very strong fit with no major conflicts.
+- 70-89: good fit with minor tradeoffs.
+- 40-69: partial fit with notable gaps.
+- 0-39: weak fit or conflicts with important notes.
+- Penalize missing key information when key note constraints cannot be verified.
+
+Output rules:
+- Return ONLY valid JSON.
+- Return at most the requested number of results.
+- house_id MUST be copied exactly from the provided "id=" value.
+- house_id MUST be a UUID string.
+- NEVER return price, rooms, address, or other values as house_id.
+- Keep "reason" short and concrete (max 2 sentences).
+`;
+
+      const userPrompt = `
 Client notes:
 ${client.notes || "No notes"}
 
@@ -137,37 +181,36 @@ Client preferences:
 
 Houses:
 ${batchHouses
-  .map(
-    (h, i) => `
+  .map((h, i) => {
+    const houseTags = (h.tags || []).map(normalizeTag).filter(Boolean);
+    const matchedPreferredTags = preferredTags.filter((t) => houseTags.includes(t));
+    return `
 ${i + 1}) id=${h.id}
 Address: ${h.address}
 City: ${h.city || "—"}
 Price: ${h.price ?? "—"}
 Rooms: ${h.rooms ?? "—"}
-Tags: ${(h.tags || []).join(", ") || "—"}
-Description: ${h.description || "—"}`
-  )
+Tags: ${houseTags.join(", ") || "—"}
+Preferred tag matches: ${matchedPreferredTags.join(", ") || "none"}
+Description: ${h.description || "—"}`;
+  })
   .join("\n")}
 
-TASK:
-Rank the houses from best to worst for this client.
-
-Return ONLY valid JSON in this exact format:
+Return JSON in this exact shape:
 {
   "results": [
     { "house_id": "uuid", "reason": "short explanation", "confidence": 0 }
   ]
 }
-IMPORTANT:
-- house_id MUST be copied exactly from the "id=" field of a house above.
-- house_id MUST be a UUID string (contains letters a-f and dashes).
-- NEVER return price, rooms, address, or any other value as house_id.
-- confidence is an integer 0–100 (100 = perfect match, 0 = terrible match).
-- Return at most ${batchTopN} results.
+
+Return at most ${batchTopN} results.
 `;
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
         temperature: 0.2,
         response_format: { type: "json_object" },
       });

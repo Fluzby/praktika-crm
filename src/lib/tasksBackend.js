@@ -74,6 +74,8 @@ export async function loadTaskCalendarSummary() {
       title: t.title,
       dueDate: t.due_at ? t.due_at.slice(0, 10) : "",
       entityType: t.entity_type,
+      entityId: t.entity_id,
+      status: t.status,
     })),
     items: tasks
       .filter((t) => t.status !== "cancelled")
