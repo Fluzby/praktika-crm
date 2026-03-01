@@ -43,6 +43,8 @@
     --shell-nav-active-border: rgba(56, 189, 248, 0.3);
     --shell-nav-icon-bg: rgba(255, 255, 255, 0.02);
     --shell-shadow: 0 22px 48px rgba(0, 0, 0, 0.32);
+    --focus-ring-color: rgba(16, 185, 129, 0.52);
+    --tap-highlight-color: rgba(16, 185, 129, 0.22);
   }
 
   html.light, html.light body {
@@ -81,6 +83,8 @@
     --shell-nav-active-border: rgba(14, 165, 233, 0.2);
     --shell-nav-icon-bg: rgba(15, 15, 15, 0.02);
     --shell-shadow: 0 18px 38px rgba(15, 15, 15, 0.08);
+    --focus-ring-color: rgba(14, 165, 233, 0.42);
+    --tap-highlight-color: rgba(14, 165, 233, 0.2);
   }
 }
 
@@ -103,12 +107,17 @@
 
   .input {
     @apply w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-white
-           focus:outline-none focus:ring-2 focus:ring-emerald-500/60;
+           focus:outline-none;
   }
 
   .textarea {
     @apply w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-white
-           focus:outline-none focus:ring-2 focus:ring-emerald-500/60;
+           focus:outline-none;
+  }
+
+  .input:focus,
+  .textarea:focus {
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
   }
 
   .chip {
@@ -648,13 +657,18 @@
   }
 
   .light .input {
-    @apply bg-white border-black/10 text-black focus:ring-emerald-600/40;
+    @apply bg-white border-black/10 text-black;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   }
 
   .light .textarea {
-    @apply bg-white border-black/10 text-black focus:ring-emerald-600/40;
+    @apply bg-white border-black/10 text-black;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .light .input:focus,
+  .light .textarea:focus {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 0 0 2px var(--focus-ring-color);
   }
 
   .light .chip {
@@ -665,6 +679,11 @@
     box-shadow: 0 10px 24px rgba(15, 15, 15, 0.12);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+  }
+
+  .back-to-top:focus-visible {
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: 2px;
   }
 }
 
@@ -739,6 +758,8 @@ html.theme-brutalist body {
   --shell-nav-active-border: rgba(56, 189, 248, 0.35);
   --shell-nav-icon-bg: rgba(255, 255, 255, 0.02);
   --shell-shadow: 0 20px 44px rgba(0, 0, 0, 0.24);
+  --focus-ring-color: rgba(56, 189, 248, 0.46);
+  --tap-highlight-color: rgba(56, 189, 248, 0.2);
 }
 
 html.theme-dark,
@@ -764,6 +785,8 @@ html.theme-dark body {
   --shell-nav-active-border: rgba(255, 255, 255, 0.14);
   --shell-nav-icon-bg: rgba(255, 255, 255, 0.01);
   --shell-shadow: none;
+  --focus-ring-color: rgba(255, 255, 255, 0.36);
+  --tap-highlight-color: rgba(255, 255, 255, 0.22);
 }
 
 .theme-dark .app-shell {
@@ -788,6 +811,8 @@ html.theme-dark body {
   --shell-nav-active-bg: rgba(245, 158, 11, 0.14);
   --shell-nav-active-border: rgba(245, 158, 11, 0.32);
   --shell-nav-icon-bg: rgba(255, 226, 188, 0.02);
+  --focus-ring-color: rgba(245, 158, 11, 0.46);
+  --tap-highlight-color: rgba(245, 158, 11, 0.24);
 }
 
 .theme-brutalist {
@@ -813,6 +838,8 @@ html.theme-dark body {
   --shell-nav-active-border: rgba(255, 255, 255, 0.9);
   --shell-nav-icon-bg: transparent;
   --shell-shadow: none;
+  --focus-ring-color: rgba(255, 255, 255, 0.58);
+  --tap-highlight-color: rgba(255, 255, 255, 0.3);
 }
 
 .theme-brutalist .iconBtn,
@@ -845,6 +872,8 @@ html.theme-dark body {
   --shell-nav-active-border: rgba(8, 145, 178, 0.2);
   --shell-nav-icon-bg: rgba(15, 15, 15, 0.02);
   --shell-shadow: 0 18px 38px rgba(15, 15, 15, 0.06);
+  --focus-ring-color: rgba(8, 145, 178, 0.38);
+  --tap-highlight-color: rgba(8, 145, 178, 0.18);
 }
 
 html.theme-plain,
@@ -935,7 +964,7 @@ html.theme-plain body {
 
 .theme-plain .input:focus,
 .theme-plain .textarea:focus {
-  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
 .theme-plain .chip {
@@ -1121,4 +1150,12 @@ html.theme-plain body {
 .light .border-white\/15,
 .theme-plain .border-white\/15 {
   border-color: rgba(15, 15, 15, 0.12) !important;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: var(--tap-highlight-color);
 }

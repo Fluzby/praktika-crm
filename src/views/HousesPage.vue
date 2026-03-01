@@ -17,6 +17,11 @@
             <option value="apartment">{{ t.property_type_apartment }}</option>
             <option value="house">{{ t.property_type_house }}</option>
           </select>
+          <select class="input w-[170px]" v-model="dealKind">
+            <option value="all">{{ t.property_deal_all }}</option>
+            <option value="sale">{{ t.property_deal_sale }}</option>
+            <option value="rent">{{ t.property_deal_rent }}</option>
+          </select>
           <button class="btn-ghost" @click="q = ''" :disabled="!q">{{ t.clear }}</button>
           <div class="text-sm text-white/50">
             {{ filtered.length }} {{ t.results }}
@@ -324,6 +329,7 @@ const error = ref("");
 const q = ref("");
 const showAdd = ref(false);
 const propertyKind = ref("all");
+const dealKind = ref("all");
 
 const creating = ref(false);
 const createError = ref("");
@@ -506,6 +512,9 @@ const filtered = computed(() => {
   if (propertyKind.value !== "all") {
     rows = rows.filter((h) => classifyPropertyType(h) === propertyKind.value);
   }
+  if (dealKind.value !== "all") {
+    rows = rows.filter((h) => classifyDealType(h) === dealKind.value);
+  }
 
   if (!term) return rows;
 
@@ -542,6 +551,8 @@ const HOUSE_TOKENS = [
   "paarismaja",
   "suvila",
 ];
+const SALE_TOKENS = ["sale", "sell", "for sale", "müük", "muuk", "müüa", "ost"];
+const RENT_TOKENS = ["rent", "rental", "lease", "for rent", "üür", "uur", "üürile", "rentida"];
 
 const classifyPropertyType = (house) => {
   const fields = [
@@ -558,6 +569,26 @@ const classifyPropertyType = (house) => {
   if (!haystack) return "unknown";
   if (APARTMENT_TOKENS.some((token) => haystack.includes(token))) return "apartment";
   if (HOUSE_TOKENS.some((token) => haystack.includes(token))) return "house";
+  return "unknown";
+};
+
+const classifyDealType = (house) => {
+  const fields = [
+    house?.deal_type,
+    house?.raw_data?.["Tehing"],
+    house?.raw_data?.["Transaction type"],
+    ...normalizeTagList(house?.tags),
+  ];
+  const haystack = fields
+    .filter((v) => v != null && String(v).trim() !== "")
+    .map((v) => String(v).toLowerCase())
+    .join(" ");
+
+  if (!haystack) return "unknown";
+  const isSale = SALE_TOKENS.some((token) => haystack.includes(token));
+  const isRent = RENT_TOKENS.some((token) => haystack.includes(token));
+  if (isSale && !isRent) return "sale";
+  if (isRent && !isSale) return "rent";
   return "unknown";
 };
 
