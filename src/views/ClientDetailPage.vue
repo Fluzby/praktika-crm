@@ -9,7 +9,7 @@
           {{ t.client_record }}
         </p>
         <div class="mt-2 flex flex-wrap gap-2">
-          <span class="chip">Open tasks: {{ openClientTasks.length }}</span>
+          <span class="chip">{{ t.open_tasks }}: {{ openClientTasks.length }}</span>
         </div>
       </div>
 
@@ -83,7 +83,7 @@
 
         <div class="glass-soft p-4 mt-6 ai-matching-window">
           <div class="flex items-center justify-between mb-3">
-            <div class="font-semibold">Recommended Houses</div>
+            <div class="font-semibold">{{ t.recommended_houses }}</div>
 
             <div class="flex items-center gap-3">
               <label class="text-xs text-white/60 flex items-center gap-2">
@@ -97,7 +97,7 @@
 
           <div v-if="matchesLoading || autoMatching || matchedLoading" class="space-y-2">
             <div class="text-white/60 text-sm">
-              {{ autoMatching ? "Finding suggested properties..." : t.loading }}
+              {{ autoMatching ? t.finding_suggested_properties : t.loading }}
             </div>
             <div class="rounded-xl border border-white/10 p-3 animate-pulse bg-white/[0.02]"></div>
             <div class="rounded-xl border border-white/10 p-3 animate-pulse bg-white/[0.02]"></div>
@@ -241,19 +241,19 @@
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <div class="glass-soft p-6">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-white/80">Follow-up Tasks</h2>
-            <span class="text-xs text-white/50">{{ openClientTasks.length }} open</span>
+            <h2 class="text-sm font-semibold text-white/80">{{ t.follow_up_tasks }}</h2>
+            <span class="text-xs text-white/50">{{ openClientTasks.length }} {{ t.open }}</span>
           </div>
 
           <div class="space-y-2 mb-3">
-            <input class="input" v-model.trim="newTaskTitle" placeholder="Add next action..." />
+            <input class="input" v-model.trim="newTaskTitle" :placeholder="t.add_next_action" />
             <input class="input" type="date" v-model="newTaskDueDate" />
             <button class="btn w-full" type="button" @click="addClientTask" :disabled="!newTaskTitle">
-              Add Task
+              {{ t.add_task }}
             </button>
           </div>
 
-          <div v-if="clientTasks.length === 0" class="text-xs text-white/60">No tasks yet.</div>
+          <div v-if="clientTasks.length === 0" class="text-xs text-white/60">{{ t.no_tasks_yet }}</div>
           <div v-else class="space-y-2">
             <div v-for="task in clientTasks" :key="task.id" class="rounded-xl border border-white/10 p-3">
               <div class="flex items-start gap-2">
@@ -261,20 +261,20 @@
                 <div class="min-w-0 flex-1">
                   <div class="text-sm" :class="task.done ? 'line-through text-white/40' : ''">{{ task.title }}</div>
                   <div class="text-xs text-white/50 mt-1">
-                    Due {{ task.dueDate || "unscheduled" }}
+                    {{ t.due }} {{ task.dueDate || t.unscheduled }}
                   </div>
                 </div>
-                <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeClientTask(task.id)">Delete</button>
+                <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeClientTask(task.id)">{{ t.delete }}</button>
               </div>
             </div>
           </div>
         </div>
 
         <div class="glass-soft p-6">
-          <h2 class="text-sm font-semibold text-white/80 mb-3">Relationship Overview</h2>
+          <h2 class="text-sm font-semibold text-white/80 mb-3">{{ t.relationship_overview }}</h2>
           <div class="grid grid-cols-1 gap-3 text-sm">
             <div class="rounded-xl border border-white/10 p-3">
-              <div class="text-xs text-white/50">Interested</div>
+              <div class="text-xs text-white/50">{{ t.interested }}</div>
               <div class="text-lg font-semibold mt-1">{{ interestedMatchesCount }}</div>
             </div>
           </div>
@@ -302,8 +302,8 @@
         </div>
 
         <div class="glass-soft p-6">
-          <h2 class="text-sm font-semibold text-white/80 mb-3">Timeline</h2>
-          <div v-if="timelineEntries.length === 0" class="text-xs text-white/60">No activity yet.</div>
+          <h2 class="text-sm font-semibold text-white/80 mb-3">{{ t.timeline }}</h2>
+          <div v-if="timelineEntries.length === 0" class="text-xs text-white/60">{{ t.no_activity }}</div>
           <div v-else class="space-y-2">
             <div v-for="item in timelineEntries" :key="item.key" class="rounded-xl border border-white/10 p-3">
               <div class="text-sm text-white/80">{{ item.label }}</div>

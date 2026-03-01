@@ -30,21 +30,35 @@
           <table class="w-full min-w-[860px] text-sm">
             <thead class="bg-white/[0.02] border-b border-white/10">
               <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
-                <th class="px-4 py-3 font-medium">Client</th>
-                <th class="px-4 py-3 font-medium">Phone</th>
-                <th class="px-4 py-3 font-medium">Email</th>
-                <th class="px-4 py-3 font-medium">Notes</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap text-right">Actions</th>
+                <th v-if="selectionMode" class="px-4 py-3 font-medium w-10">
+                  <input
+                    type="checkbox"
+                    :checked="allVisibleClientsSelected"
+                    @change="toggleSelectAllVisibleClients"
+                  />
+                </th>
+                <th class="px-4 py-3 font-medium">{{ t.client }}</th>
+                <th class="px-4 py-3 font-medium">{{ t.phone }}</th>
+                <th class="px-4 py-3 font-medium">{{ t.email }}</th>
+                <th class="px-4 py-3 font-medium">{{ t.notes }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t.created }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap text-right">{{ t.actions }}</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="c in filtered"
+                v-for="(c, index) in filtered"
                 :key="c.id"
                 class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer"
-                @click="openClient(c.id)"
+                @click="selectionMode ? onClientSelectInteraction(c.id, index, $event) : openClient(c.id)"
               >
+                <td v-if="selectionMode" class="px-4 py-3" @click.stop>
+                  <input
+                    type="checkbox"
+                    :checked="isClientSelected(c.id)"
+                    @change="onClientSelectInteraction(c.id, index, $event)"
+                  />
+                </td>
                 <td class="px-4 py-3">
                   <div class="font-semibold text-white truncate max-w-[240px]">{{ c.full_name }}</div>
                 </td>
@@ -58,6 +72,7 @@
                 <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(c.created_at) }}</td>
                 <td class="px-4 py-3 text-right" @click.stop>
                   <RowActionsMenu
+                    v-if="!selectionMode"
                     :archived="!!c.is_archived"
                     @archive="onArchiveClient(c)"
                     @delete="onDeleteClient(c)"
@@ -66,7 +81,7 @@
               </tr>
 
               <tr v-if="filtered.length === 0">
-                <td colspan="6" class="px-4 py-8 text-center text-white/60">
+                <td :colspan="selectionMode ? 7 : 6" class="px-4 py-8 text-center text-white/60">
                   {{ t.no_clients_found }}
                 </td>
               </tr>
@@ -177,6 +192,10 @@ const error = ref("");
 
 const q = ref("");
 const showAdd = ref(false);
+const selectionMode = ref(false);
+const selectedClientIds = ref([]);
+const bulkBusy = ref(false);
+const lastClientSelectionIndex = ref(null);
 
 const alreadyInterested = ref(false);
 const interestedHouseId = ref("");
@@ -198,11 +217,6 @@ const form = ref({
 });
 
 const t = useT();
-
-useTopbarActions(() => [
-  { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
-  { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true) },
-]);
 
 const loadHousesForSelect = async () => {
   housesLoading.value = true;
@@ -257,7 +271,7 @@ const onArchiveClient = async (clientRow) => {
 };
 
 const onDeleteClient = async (clientRow) => {
-  if (!confirm(`Delete ${clientRow.full_name}?`)) return;
+  if (!confirm(`${t.value.delete} ${clientRow.full_name}?`)) return;
   const { error: e } = await supabase.from("clients").delete().eq("id", clientRow.id);
   if (e) return alert(e.message);
   await load();
@@ -282,6 +296,130 @@ const filtered = computed(() => {
   });
 });
 
+const selectedClientIdSet = computed(() => new Set(selectedClientIds.value));
+const allVisibleClientsSelected = computed(() =>
+  filtered.value.length > 0 && filtered.value.every((c) => selectedClientIdSet.value.has(c.id))
+);
+
+const isClientSelected = (id) => selectedClientIdSet.value.has(id);
+
+const toggleClientSelection = (id) => {
+  if (selectedClientIdSet.value.has(id)) {
+    selectedClientIds.value = selectedClientIds.value.filter((x) => x !== id);
+    return;
+  }
+  selectedClientIds.value = [...selectedClientIds.value, id];
+};
+
+const onClientSelectInteraction = (id, index, event) => {
+  const shift = !!event?.shiftKey;
+  if (
+    shift &&
+    Number.isInteger(lastClientSelectionIndex.value) &&
+    Number.isInteger(index) &&
+    filtered.value.length
+  ) {
+    const start = Math.min(lastClientSelectionIndex.value, index);
+    const end = Math.max(lastClientSelectionIndex.value, index);
+    const rangeIds = filtered.value.slice(start, end + 1).map((c) => c.id);
+    const next = new Set(selectedClientIds.value);
+    const shouldSelect = !next.has(id);
+    for (const rangeId of rangeIds) {
+      if (shouldSelect) next.add(rangeId);
+      else next.delete(rangeId);
+    }
+    selectedClientIds.value = Array.from(next);
+    lastClientSelectionIndex.value = index;
+    return;
+  }
+  toggleClientSelection(id);
+  lastClientSelectionIndex.value = index;
+};
+
+const toggleSelectAllVisibleClients = () => {
+  if (allVisibleClientsSelected.value) {
+    const visibleIds = new Set(filtered.value.map((c) => c.id));
+    selectedClientIds.value = selectedClientIds.value.filter((id) => !visibleIds.has(id));
+    return;
+  }
+  const merged = new Set(selectedClientIds.value);
+  for (const c of filtered.value) merged.add(c.id);
+  selectedClientIds.value = Array.from(merged);
+};
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value;
+  if (!selectionMode.value) {
+    selectedClientIds.value = [];
+    lastClientSelectionIndex.value = null;
+  }
+}
+
+async function bulkArchiveClients() {
+  if (!selectedClientIds.value.length) return;
+  bulkBusy.value = true;
+  error.value = "";
+  try {
+    await Promise.all(
+      selectedClientIds.value.map((id) =>
+        archiveEntity({ entityType: "client", entityId: id, archived: false })
+      )
+    );
+    await load();
+    selectedClientIds.value = [];
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+async function bulkDeleteClients() {
+  if (!selectedClientIds.value.length) return;
+  if (!confirm(t.value.delete_selected_clients_confirm)) return;
+  bulkBusy.value = true;
+  error.value = "";
+  try {
+    const { error: e } = await supabase
+      .from("clients")
+      .delete()
+      .in("id", selectedClientIds.value);
+    if (e) throw e;
+    await load();
+    selectedClientIds.value = [];
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+useTopbarActions(() => {
+  if (!selectionMode.value) {
+    return [
+      { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value || bulkBusy.value },
+      { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true), disabled: bulkBusy.value },
+      { key: "select-mode", label: t.value.select_mode, onClick: toggleSelectionMode },
+    ];
+  }
+
+  return [
+    {
+      key: "select-visible",
+      label: allVisibleClientsSelected.value ? t.value.clear_selection : t.value.select_all_visible,
+      onClick: toggleSelectAllVisibleClients,
+      disabled: !filtered.value.length || bulkBusy.value,
+    },
+    {
+      key: "bulk-archive",
+      label: t.value.archive_selected,
+      onClick: bulkArchiveClients,
+      disabled: !selectedClientIds.value.length || bulkBusy.value,
+    },
+    { key: "exit-select-mode", label: t.value.exit_select_mode, onClick: toggleSelectionMode, disabled: bulkBusy.value },
+  ];
+});
+
 async function load() {
   loading.value = true;
   error.value = "";
@@ -295,6 +433,8 @@ async function load() {
 
     if (e) throw e;
     clients.value = data || [];
+    const liveIds = new Set(clients.value.map((c) => c.id));
+    selectedClientIds.value = selectedClientIds.value.filter((id) => liveIds.has(id));
   } catch (err) {
     error.value = err?.message || String(err);
   } finally {

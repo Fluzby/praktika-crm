@@ -147,13 +147,14 @@
           >
             <div class="flex items-start justify-between gap-3">
               <div>
-                <h2 class="font-semibold" style="color: var(--shell-text-strong);">Calendar</h2>
+                <h2 class="font-semibold" style="color: var(--shell-text-strong);">{{ t.calendar }}</h2>
                 <div class="text-sm mt-0.5" style="color: var(--shell-text-muted);">{{ dashboardMonthLabel }}</div>
               </div>
               <div class="flex items-center gap-2">
+                <button class="btn-ghost text-xs px-2.5 py-1.5" type="button" @click="dashboardGoToday">{{ t.today }}</button>
                 <button class="h-8 w-8 rounded-lg border" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);" type="button" @click="dashboardPrevMonth">←</button>
                 <button class="h-8 w-8 rounded-lg border" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);" type="button" @click="dashboardNextMonth">→</button>
-                <RouterLink to="/calendar" class="btn-ghost text-xs px-2.5 py-1.5">Open</RouterLink>
+                <RouterLink to="/calendar" class="btn-ghost text-xs px-2.5 py-1.5">{{ t.open }}</RouterLink>
               </div>
             </div>
 
@@ -193,8 +194,8 @@
               style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 90%, transparent);"
             >
               <div class="flex items-center justify-between mb-2">
-                <div class="text-xs" style="color: var(--shell-text-muted);">Selected: {{ dashboardSelectedDate }}</div>
-                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardSelectedDate = ''">Close</button>
+                <div class="text-xs" style="color: var(--shell-text-muted);">{{ t.selected }}: {{ dashboardSelectedDate }}</div>
+                <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardSelectedDate = ''">{{ t.close }}</button>
               </div>
               <div class="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
                 <div
@@ -224,7 +225,7 @@
                       type="button"
                       @click.stop="openTaskEntity(task)"
                     >
-                      Open
+                      {{ t.open }}
                     </button>
                   </div>
                 </div>
@@ -232,7 +233,7 @@
                   v-if="!dashboardSelectedItems.events.length && !dashboardSelectedItems.tasks.length"
                   style="color: var(--shell-text-muted);"
                 >
-                  No items for this day.
+                  {{ t.no_items_for_day }}
                 </div>
               </div>
             </div>
@@ -240,24 +241,24 @@
 
           <div class="mb-5">
             <div class="flex items-center justify-between">
-              <h2 class="font-semibold">Follow-ups</h2>
-              <span class="text-xs text-white/50">{{ taskSummary.totalOpen }} open</span>
+              <h2 class="font-semibold">{{ t.follow_ups }}</h2>
+              <span class="text-xs text-white/50">{{ taskSummary.totalOpen }} {{ t.open }}</span>
             </div>
             <div class="grid grid-cols-3 gap-2 mt-3 text-sm">
               <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-                <div class="text-xs text-white/50">Overdue</div>
+                <div class="text-xs text-white/50">{{ t.overdue }}</div>
                 <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.overdue }}</div>
-                <div class="text-[11px] text-white/45 mt-1">Needs attention</div>
+                <div class="text-[11px] text-white/45 mt-1">{{ t.needs_attention }}</div>
               </div>
               <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-                <div class="text-xs text-white/50">Today</div>
+                <div class="text-xs text-white/50">{{ t.today }}</div>
                 <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.today }}</div>
-                <div class="text-[11px] text-white/45 mt-1">Due now</div>
+                <div class="text-[11px] text-white/45 mt-1">{{ t.due_now }}</div>
               </div>
               <div class="rounded-xl border border-sky-500/25 bg-sky-500/8 p-3">
-                <div class="text-xs text-white/50">Upcoming</div>
+                <div class="text-xs text-white/50">{{ t.upcoming }}</div>
                 <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.upcoming }}</div>
-                <div class="text-[11px] text-white/45 mt-1">Planned next</div>
+                <div class="text-[11px] text-white/45 mt-1">{{ t.planned_next }}</div>
               </div>
             </div>
             <div v-if="taskSummary.recent.length" class="mt-3 space-y-2 text-xs">
@@ -271,12 +272,12 @@
               >
                 <div class="truncate font-medium">{{ task.title }}</div>
                 <div class="text-white/45 mt-1 flex items-center justify-between gap-2">
-                  <span>{{ task.dueDate || "No due date" }} • {{ task.entityType }}</span>
-                  <span v-if="task.entityId" class="text-white/65">Open</span>
+                  <span>{{ task.dueDate || t.no_due_date }} • {{ task.entityType }}</span>
+                  <span v-if="task.entityId" class="text-white/65">{{ t.open }}</span>
                 </div>
               </button>
             </div>
-            <div v-else class="mt-3 text-xs text-white/45">No follow-ups yet.</div>
+            <div v-else class="mt-3 text-xs text-white/45">{{ t.no_follow_ups_yet }}</div>
           </div>
 
           <h2 class="font-semibold mb-3">{{ t.recent_activity }}</h2>
@@ -623,7 +624,7 @@ const recentClients = ref([]);
 const recentHouses = ref([]);
 const activity = ref([]);
 const taskSummary = ref({ overdue: 0, today: 0, upcoming: 0, totalOpen: 0, recent: [] });
-const calendarWeekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const calendarWeekdays = ["E", "T", "K", "N", "R", "L", "P"];
 const dashboardViewYear = ref(new Date().getFullYear());
 const dashboardViewMonth = ref(new Date().getMonth());
 const dashboardSelectedDate = ref("");
@@ -900,6 +901,13 @@ const dashboardNextMonth = () => {
   } else {
     dashboardViewMonth.value += 1;
   }
+};
+
+const dashboardGoToday = () => {
+  const today = new Date();
+  dashboardViewYear.value = today.getFullYear();
+  dashboardViewMonth.value = today.getMonth();
+  dashboardSelectedDate.value = toDateKey(today);
 };
 
 const loadClientHousesForSelect = async () => {

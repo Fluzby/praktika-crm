@@ -266,7 +266,7 @@
             <div class="flex items-center gap-2">
               <label class="text-xs text-white/60 flex items-center gap-2">
                 <input type="checkbox" v-model="hideEmptyXlsxFields" />
-                Hide empty fields
+                {{ t.hide_empty_fields }}
               </label>
               <button class="btn-ghost" type="button" @click="showAllInfo = !showAllInfo">
                 {{ showAllInfo ? t.hide_all_info : t.show_all_info }}
@@ -276,7 +276,7 @@
 
           <div class="space-y-3">
             <div v-if="xlsxDisplayGroups.length === 0" class="text-sm text-white/60">
-              No XLSX fields with values to display.
+              {{ t.no_xlsx_fields_with_values }}
             </div>
             <details
               v-for="group in xlsxDisplayGroups"
@@ -309,26 +309,26 @@
       <aside class="col-span-12 lg:col-span-4 space-y-6">
         <div class="glass-soft p-6">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-white/80">Follow-up Tasks</h2>
-            <span class="text-xs text-white/50">{{ openHouseTasks.length }} open</span>
+            <h2 class="text-sm font-semibold text-white/80">{{ t.follow_up_tasks }}</h2>
+            <span class="text-xs text-white/50">{{ openHouseTasks.length }} {{ t.open }}</span>
           </div>
           <div class="space-y-2 mb-3">
-            <input class="input" v-model.trim="newTaskTitle" placeholder="Add property task..." />
+            <input class="input" v-model.trim="newTaskTitle" :placeholder="t.add_property_task" />
             <input class="input" type="date" v-model="newTaskDueDate" />
             <button class="btn w-full" type="button" @click="addHouseTask" :disabled="!newTaskTitle">
-              Add Task
+              {{ t.add_task }}
             </button>
           </div>
-          <div v-if="houseTasks.length === 0" class="text-xs text-white/60">No tasks yet.</div>
+          <div v-if="houseTasks.length === 0" class="text-xs text-white/60">{{ t.no_tasks_yet }}</div>
           <div v-else class="space-y-2">
             <div v-for="task in houseTasks" :key="task.id" class="rounded-xl border border-white/10 p-3">
               <div class="flex items-start gap-2">
                 <input type="checkbox" :checked="task.done" @change="toggleHouseTask(task.id)" class="mt-1" />
                 <div class="min-w-0 flex-1">
                   <div class="text-sm" :class="task.done ? 'line-through text-white/40' : ''">{{ task.title }}</div>
-                  <div class="text-xs text-white/50 mt-1">Due {{ task.dueDate || "unscheduled" }}</div>
+                  <div class="text-xs text-white/50 mt-1">{{ t.due }} {{ task.dueDate || t.unscheduled }}</div>
                 </div>
-                <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeHouseTask(task.id)">Delete</button>
+                <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeHouseTask(task.id)">{{ t.delete }}</button>
               </div>
             </div>
           </div>

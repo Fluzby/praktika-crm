@@ -5,8 +5,8 @@
       type="button"
       class="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] grid place-items-center text-white/80"
       @click.stop="toggleMenu"
-      aria-label="Row actions"
-      title="Actions"
+      :aria-label="t.row_actions"
+      :title="t.actions"
     >
       ⋯
     </button>
@@ -19,9 +19,9 @@
         @click.stop
       >
         <button class="menu-item" type="button" @click="emitAndClose('archive')">
-          {{ archived ? "Unarchive" : "Archive" }}
+          {{ archived ? t.unarchive : t.archive }}
         </button>
-        <button class="menu-item menu-item-danger" type="button" @click="emitAndClose('delete')">Delete</button>
+        <button class="menu-item menu-item-danger" type="button" @click="emitAndClose('delete')">{{ t.delete }}</button>
       </div>
     </teleport>
   </div>
@@ -29,12 +29,14 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useT } from "../lib/i18n";
 
 defineProps({
   archived: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["archive", "delete"]);
+const t = useT();
 const open = ref(false);
 const rootEl = ref(null);
 const triggerEl = ref(null);

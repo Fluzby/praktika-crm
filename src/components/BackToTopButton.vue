@@ -4,18 +4,19 @@
     class="back-to-top focus:outline-none"
     :class="visible ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'"
     @click="scrollToTop"
-    aria-label="Back to top"
-    title="Back to top"
+    :aria-label="t.back_to_top"
+    :title="t.back_to_top"
   >
     <span class="inline-flex items-center gap-2">
       <span class="text-base leading-none">↑</span>
-      <span class="hidden sm:inline">Top</span>
+      <span class="hidden sm:inline">{{ t.top }}</span>
     </span>
   </button>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, unref, watch } from "vue";
+import { useT } from "../lib/i18n";
 
 const props = defineProps({
   // Scroll container (AppLayout's <main>). Can be an element or a ref to an element.
@@ -24,6 +25,7 @@ const props = defineProps({
 });
 
 const visible = ref(false);
+const t = useT();
 
 let cleanup = null;
 

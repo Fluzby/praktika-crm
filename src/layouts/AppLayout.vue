@@ -31,8 +31,8 @@
               class="shell-icon-btn lg:hidden"
               type="button"
               @click="mobileSidebarOpen = true"
-              aria-label="Open navigation"
-              title="Open navigation"
+              :aria-label="t.open_navigation"
+              :title="t.open_navigation"
             >
               ☰
             </button>
@@ -62,6 +62,21 @@
               >
                 {{ action.label }}
               </RouterLink>
+              <select
+                v-else-if="action.type === 'select'"
+                class="input text-xs h-8 py-0 px-2.5 hidden sm:block w-auto min-w-[150px]"
+                :value="action.value"
+                :disabled="!!action.disabled"
+                @change="action.onChange?.($event.target.value)"
+              >
+                <option
+                  v-for="opt in (action.options || [])"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
               <button
                 v-else
                 class="btn-ghost text-xs px-2.5 py-1.5 hidden sm:inline-flex"
@@ -75,7 +90,7 @@
             <button
               class="shell-icon-btn hidden sm:grid"
               type="button"
-              title="Search pages"
+              :title="t.search_pages"
               @click="toggleSearch"
             >
               ⌕
@@ -89,7 +104,7 @@
                   v-model.trim="searchQuery"
                   type="text"
                   class="shell-search-input"
-                  placeholder="Find pages, tabs, settings..."
+                  :placeholder="t.find_pages_tabs_settings"
                   @keydown.esc="closeSearch"
                   @keydown.enter.prevent="openFirstSearchResult"
                 />
@@ -115,11 +130,11 @@
               </div>
 
               <div v-else-if="entitySearchLoading" class="shell-search-empty">
-                Loading records...
+                {{ t.loading_records }}
               </div>
 
               <div v-else class="shell-search-empty">
-                No matches for "{{ searchQuery }}"
+                {{ t.no_matches_for }} "{{ searchQuery }}"
               </div>
 
               <div v-if="entitySearchError" class="shell-search-empty border-t border-white/10">
@@ -150,10 +165,12 @@ import BackToTopButton from "../components/BackToTopButton.vue";
 import { supabase } from "../lib/supabase";
 import { topbarActions } from "../lib/topbarActions";
 import { settings } from "../lib/settings";
+import { useT } from "../lib/i18n";
 
 const mainEl = ref(null);
 const route = useRoute();
 const router = useRouter();
+const t = useT();
 
 const sidebarCollapsed = ref(false);
 const sidebarHoverExpanded = ref(false);
@@ -246,16 +263,16 @@ const handleSidebarNavigate = () => {
   sidebarHoverLocked.value = true;
 };
 
-const searchItems = [
-  { key: "dashboard", label: "Dashboard", section: "Main", path: "/dashboard", icon: "▦", terms: "dashboard home overview stats widgets" },
-  { key: "houses", label: "Properties", section: "Main", path: "/houses", icon: "⌂", terms: "houses homes properties listings inventory objects" },
-  { key: "clients", label: "Clients", section: "Main", path: "/clients", icon: "◍", terms: "clients contacts people leads buyers sellers" },
-  { key: "settings", label: "Settings", section: "Main", path: "/settings", icon: "⚙", terms: "settings preferences theme language workspace config" },
-  { key: "calendar", label: "Calendar", section: "Main", path: "/calendar", icon: "◷", terms: "calendar schedule notes planner session" },
-  { key: "archive", label: "Archive", section: "Main", path: "/archive", icon: "🗄", terms: "archive archived restore deleted old records" },
-  { key: "theme", label: "Theme Settings", section: "Settings", path: "/settings", icon: "◐", terms: "theme dark light glass warm brutalist plain colors mode" },
-  { key: "language", label: "Language Settings", section: "Settings", path: "/settings", icon: "⎈", terms: "language locale translation english estonian" },
-];
+const searchItems = computed(() => [
+  { key: "dashboard", label: t.value.dashboard, section: t.value.main, path: "/dashboard", icon: "▦", terms: "dashboard home overview stats widgets" },
+  { key: "houses", label: t.value.houses, section: t.value.main, path: "/houses", icon: "⌂", terms: "houses homes properties listings inventory objects" },
+  { key: "clients", label: t.value.clients, section: t.value.main, path: "/clients", icon: "◍", terms: "clients contacts people leads buyers sellers" },
+  { key: "settings", label: t.value.settings, section: t.value.main, path: "/settings", icon: "⚙", terms: "settings preferences theme language workspace config" },
+  { key: "calendar", label: t.value.calendar, section: t.value.main, path: "/calendar", icon: "◷", terms: "calendar schedule notes planner session" },
+  { key: "archive", label: t.value.archive, section: t.value.main, path: "/archive", icon: "🗄", terms: "archive archived restore deleted old records" },
+  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", icon: "◐", terms: "theme dark light glass warm brutalist plain colors mode" },
+  { key: "language", label: t.value.language_settings, section: t.value.settings, path: "/settings", icon: "⎈", terms: "language locale translation english estonian" },
+]);
 
 const loadEntitySearchItems = async () => {
   if (entitySearchLoaded.value || entitySearchLoading.value) return;
@@ -272,8 +289,8 @@ const loadEntitySearchItems = async () => {
       for (const c of clientsRes.data || []) {
         rows.push({
           key: `client-${c.id}`,
-          label: c.full_name || "Client",
-          section: "Client Record",
+          label: c.full_name || t.value.client,
+          section: t.value.client_record,
           path: `/clients/${c.id}`,
           icon: "◍",
           terms: `client ${c.full_name || ""} ${c.email || ""} ${c.phone || ""}`,
@@ -284,8 +301,8 @@ const loadEntitySearchItems = async () => {
       for (const h of housesRes.data || []) {
         rows.push({
           key: `house-${h.id}`,
-          label: h.address || "Property",
-          section: h.city ? `Property • ${h.city}` : "Property Record",
+          label: h.address || t.value.house,
+          section: h.city ? `${t.value.house} • ${h.city}` : t.value.property_record,
           path: `/houses/${h.id}`,
           icon: "⌂",
           terms: `house property listing ${h.address || ""} ${h.city || ""}`,
@@ -304,7 +321,7 @@ const loadEntitySearchItems = async () => {
 
 const filteredSearchItems = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
-  const source = [...searchItems, ...entitySearchItems.value];
+  const source = [...searchItems.value, ...entitySearchItems.value];
   if (!q) return source;
 
   return source.filter((item) => {
@@ -371,30 +388,30 @@ const pageMeta = computed(() => {
   const path = route.path;
 
   if (path.startsWith("/clients/")) {
-    return { section: "Clients", title: "Client Detail", detail: route.params.id };
+    return { section: t.value.clients, title: t.value.client_detail, detail: route.params.id };
   }
   if (path.startsWith("/houses/")) {
-    return { section: "Properties", title: "Property Detail", detail: route.params.id };
+    return { section: t.value.houses, title: t.value.property_detail, detail: route.params.id };
   }
   if (path === "/dashboard") {
-    return { section: "Dashboard", title: "Overview", detail: "" };
+    return { section: t.value.dashboard, title: t.value.overview, detail: "" };
   }
   if (path === "/clients") {
-    return { section: "Clients", title: "Client Database", detail: "" };
+    return { section: t.value.clients, title: t.value.client_database, detail: "" };
   }
   if (path === "/houses") {
-    return { section: "Properties", title: "Property Inventory", detail: "" };
+    return { section: t.value.houses, title: t.value.property_inventory, detail: "" };
   }
   if (path === "/settings") {
-    return { section: "Settings", title: "Workspace Preferences", detail: "" };
+    return { section: t.value.settings, title: t.value.workspace_preferences, detail: "" };
   }
   if (path === "/calendar") {
-    return { section: "Calendar", title: "Planner", detail: "" };
+    return { section: t.value.calendar, title: t.value.planner, detail: "" };
   }
   if (path === "/archive") {
-    return { section: "Archive", title: "Archived Records", detail: "" };
+    return { section: t.value.archive, title: t.value.archived_records, detail: "" };
   }
 
-  return { section: "Workspace", title: "CRM", detail: "" };
+  return { section: t.value.workspace, title: "CRM", detail: "" };
 });
 </script>

@@ -9,7 +9,7 @@
 
         <div class="relative flex items-center justify-between gap-3">
           <div>
-            <div class="text-[11px] uppercase tracking-[0.14em]" style="color: var(--shell-text-muted);">Planner</div>
+            <div class="text-[11px] uppercase tracking-[0.14em]" style="color: var(--shell-text-muted);">{{ t.planner }}</div>
             <div class="font-semibold text-lg leading-tight mt-1">{{ monthLabel }}</div>
           </div>
           <div class="flex items-center gap-2">
@@ -33,8 +33,8 @@
         </div>
 
         <div class="relative mt-3 flex items-center gap-2 text-xs" style="color: var(--shell-text-muted);">
-          <span class="chip px-2 py-0.5">Events: {{ monthEventCount }}</span>
-          <span class="chip px-2 py-0.5">Deadlines: {{ monthDeadlineCount }}</span>
+          <span class="chip px-2 py-0.5">{{ t.events }}: {{ monthEventCount }}</span>
+          <span class="chip px-2 py-0.5">{{ t.deadlines }}: {{ monthDeadlineCount }}</span>
         </div>
 
         <div class="mt-4 overflow-x-auto">
@@ -67,7 +67,7 @@
                         class="text-[10px] rounded-md px-1.5 py-0.5"
                         style="background: rgba(26,115,232,0.18); border: 1px solid rgba(26,115,232,0.42); color: #1a73e8;"
                       >
-                        Today
+                        {{ t.today }}
                       </span>
                     </div>
                     <div class="text-[11px] mt-2 min-h-8 space-y-1 overflow-hidden">
@@ -83,7 +83,7 @@
                         <span class="truncate">{{ item.title }}</span>
                       </div>
                       <div v-if="dayTotalItems(day) > dayPreviewItems(day).length" class="opacity-75 text-[10px]">
-                        +{{ dayTotalItems(day) - dayPreviewItems(day).length }} more
+                        +{{ dayTotalItems(day) - dayPreviewItems(day).length }} {{ t.more }}
                       </div>
                     </div>
                   </button>
@@ -96,30 +96,30 @@
       </section>
 
       <aside class="glass-soft p-4 xl:sticky xl:top-20 space-y-4">
-        <div class="text-sm font-semibold" style="color: var(--shell-text-strong);">Create Event</div>
+        <div class="text-sm font-semibold" style="color: var(--shell-text-strong);">{{ t.create_event }}</div>
         <div class="rounded-xl border p-3 space-y-3" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 82%, transparent);">
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Title</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.event_title }}</label>
             <input
               class="input"
               v-model.trim="eventTitle"
-              placeholder="Enter event title..."
+              :placeholder="t.enter_event_title"
               @keyup.enter="addEvent"
             />
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Note</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.note }}</label>
             <textarea
               class="textarea"
               rows="3"
               v-model.trim="eventNote"
-              placeholder="Optional note for this event..."
+              :placeholder="t.optional_note_for_event"
             ></textarea>
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Date</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.date }}</label>
             <div class="flex items-center gap-2 flex-wrap">
               <button
                 class="btn-ghost text-sm"
@@ -127,7 +127,7 @@
                 :class="{ 'ring-1 ring-emerald-400/60': eventDateMode === 'today' }"
                 @click="eventDateMode = 'today'"
               >
-                Today
+                {{ t.today }}
               </button>
               <button
                 class="btn-ghost text-sm"
@@ -135,7 +135,7 @@
                 :class="{ 'ring-1 ring-emerald-400/60': eventDateMode === 'exact' }"
                 @click="eventDateMode = 'exact'"
               >
-                Exact date
+                {{ t.exact_date }}
               </button>
               <input
                 v-if="eventDateMode === 'exact'"
@@ -147,15 +147,15 @@
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Repeat</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.repeat }}</label>
             <select class="input" v-model="eventRepeat">
-              <option value="none">Do not repeat</option>
-              <option value="yearly">Repeat every year</option>
+              <option value="none">{{ t.do_not_repeat }}</option>
+              <option value="yearly">{{ t.repeat_every_year }}</option>
             </select>
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Event type</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.event_type }}</label>
             <select class="input" v-model="eventType">
               <option v-for="option in EVENT_TYPE_OPTIONS" :key="option.value" :value="option.value">
                 {{ option.label }}
@@ -164,9 +164,9 @@
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Linked client (optional)</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.linked_client_optional }}</label>
             <select class="input" v-model="eventClientId">
-              <option value="">No client</option>
+              <option value="">{{ t.no_client }}</option>
               <option v-for="c in eventClients" :key="c.id" :value="c.id">
                 {{ c.full_name }}
               </option>
@@ -174,9 +174,9 @@
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Linked property (optional)</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.linked_property_optional }}</label>
             <select class="input" v-model="eventHouseId">
-              <option value="">No property</option>
+              <option value="">{{ t.no_property }}</option>
               <option v-for="h in eventHouses" :key="h.id" :value="h.id">
                 {{ h.city ? `${h.address} • ${h.city}` : h.address }}
               </option>
@@ -184,7 +184,7 @@
           </div>
 
           <div>
-            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">Color</label>
+            <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.color }}</label>
             <div class="mt-1 flex items-center gap-2 flex-wrap">
               <button
                 v-for="preset in CALENDAR_COLOR_PRESETS"
@@ -194,16 +194,16 @@
                 :style="{ background: preset, borderColor: eventColor === preset ? 'white' : 'rgba(255,255,255,0.25)' }"
                 @click="eventColor = preset"
                 :disabled="isColorTakenForDraftDate(preset) && eventColor !== preset"
-                :title="isColorTakenForDraftDate(preset) && eventColor !== preset ? 'Already used on this date' : ''"
+                :title="isColorTakenForDraftDate(preset) && eventColor !== preset ? t.already_used_on_date : ''"
               ></button>
             </div>
           </div>
 
-          <button class="btn w-full" type="button" @click="addEvent">Add event</button>
+          <button class="btn w-full" type="button" @click="addEvent">{{ t.add_event }}</button>
         </div>
 
         <div class="rounded-xl border p-3" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 82%, transparent);">
-          <div class="text-xs uppercase tracking-[0.1em] mb-2" style="color: var(--shell-text-muted);">Upcoming events</div>
+          <div class="text-xs uppercase tracking-[0.1em] mb-2" style="color: var(--shell-text-muted);">{{ t.upcoming_events }}</div>
           <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
             <div
               v-for="e in upcomingEvents"
@@ -217,23 +217,23 @@
                 </div>
                 <div class="text-[11px] opacity-75">
                   {{ eventTypeLabel(e.type) }} •
-                  {{ formatDate(e.nextOccurrence) }}<span v-if="e.repeat === 'yearly'"> • yearly</span>
+                  {{ formatDate(e.nextOccurrence) }}<span v-if="e.repeat === 'yearly'"> • {{ t.yearly }}</span>
                 </div>
                 <div v-if="e.clientId || e.houseId" class="text-[11px] opacity-80 mt-0.5">
-                  <span v-if="e.clientId">{{ clientNameById[e.clientId] || "Client" }}</span>
+                  <span v-if="e.clientId">{{ clientNameById[e.clientId] || t.client }}</span>
                   <span v-if="e.clientId && e.houseId"> • </span>
-                  <span v-if="e.houseId">{{ houseNameById[e.houseId] || "Property" }}</span>
+                  <span v-if="e.houseId">{{ houseNameById[e.houseId] || t.house }}</span>
                 </div>
                 <div v-if="e.note" class="text-[11px] opacity-80 mt-0.5 whitespace-pre-wrap">{{ e.note }}</div>
               </div>
               <div class="flex items-center gap-1 shrink-0">
-                <button class="btn-ghost text-xs" type="button" @click="openEventDetails(e)">Open</button>
+                <button class="btn-ghost text-xs" type="button" @click="openEventDetails(e)">{{ t.open }}</button>
                 <button class="btn-ghost text-xs" type="button" @click="removeEvent(e.id)">
-                  Delete
+                  {{ t.delete }}
                 </button>
               </div>
             </div>
-            <div v-if="upcomingEvents.length === 0" class="text-sm" style="color: var(--shell-text-muted);">No upcoming events.</div>
+            <div v-if="upcomingEvents.length === 0" class="text-sm" style="color: var(--shell-text-muted);">{{ t.no_upcoming_events }}</div>
           </div>
         </div>
 
@@ -254,14 +254,14 @@
         >
           <div class="flex items-center justify-between mb-4">
             <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">
-              {{ formatDate(selectedDayDetails.date) }} • Day details
+              {{ formatDate(selectedDayDetails.date) }} • {{ t.day_details }}
             </div>
-            <button class="btn-ghost text-xs" type="button" @click="selectedDayDetails = null">Close</button>
+            <button class="btn-ghost text-xs" type="button" @click="selectedDayDetails = null">{{ t.close }}</button>
           </div>
 
           <div class="space-y-4">
             <div v-if="selectedDayDetails.events.length" class="space-y-2">
-              <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">Events</div>
+              <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">{{ t.events }}</div>
               <div
                 v-for="event in selectedDayDetails.events"
                 :key="`day-ev-${event.id}`"
@@ -272,19 +272,19 @@
                   <div class="min-w-0">
                     <div class="font-medium">◆ {{ event.title }}</div>
                     <div class="text-xs mt-1 opacity-80">
-                      {{ eventTypeLabel(event.type) }}<span v-if="event.repeat === 'yearly'"> • yearly</span>
+                      {{ eventTypeLabel(event.type) }}<span v-if="event.repeat === 'yearly'"> • {{ t.yearly }}</span>
                     </div>
                     <div v-if="event.note" class="text-xs mt-1.5 opacity-85 whitespace-pre-wrap">{{ event.note }}</div>
                   </div>
                   <button class="btn-ghost text-xs shrink-0" type="button" @click="openEventDetails(event)">
-                    Open
+                    {{ t.open }}
                   </button>
                 </div>
               </div>
             </div>
 
             <div v-if="selectedDayDetails.deadlines.length" class="space-y-2">
-              <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">Deadlines</div>
+              <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">{{ t.deadlines }}</div>
               <div
                 v-for="deadline in selectedDayDetails.deadlines"
                 :key="`day-dl-${deadline.id}`"
@@ -297,7 +297,7 @@
                     <div class="text-xs mt-1 opacity-80">{{ deadline.entityType || "record" }}</div>
                   </div>
                   <button class="btn-ghost text-xs shrink-0" type="button" @click="openDeadlineDetails(deadline)">
-                    Open
+                    {{ t.open }}
                   </button>
                 </div>
               </div>
@@ -308,7 +308,7 @@
               class="text-sm"
               style="color: var(--shell-text-muted);"
             >
-              No items for this day.
+              {{ t.no_items_for_day }}
             </div>
           </div>
         </div>
@@ -326,26 +326,26 @@
           style="color: var(--shell-text-strong);"
         >
           <div class="flex items-center justify-between mb-4">
-            <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">Event details</div>
-            <button class="btn-ghost text-xs" type="button" @click="selectedCalendarItem = null">Close</button>
+            <div class="text-xs uppercase tracking-[0.08em]" style="color: var(--shell-text-muted);">{{ t.event_details }}</div>
+            <button class="btn-ghost text-xs" type="button" @click="selectedCalendarItem = null">{{ t.close }}</button>
           </div>
 
           <div class="space-y-4">
             <div>
-              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Title</div>
+              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.event_title }}</div>
               <div class="text-xl font-semibold leading-snug" style="color: var(--shell-text-strong);">
                 {{ selectedCalendarItem.title }}
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div class="rounded-lg border p-3" style="border-color: var(--shell-border); background: var(--shell-card);">
-                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Date</div>
+                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.date }}</div>
                 <div style="color: var(--shell-text);">{{ formatDate(selectedCalendarItem.date) }}</div>
               </div>
               <div class="rounded-lg border p-3" style="border-color: var(--shell-border); background: var(--shell-card);">
-                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Type</div>
+                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.type }}</div>
                 <div style="color: var(--shell-text);">
-                  {{ selectedCalendarItem.kind === "deadline" ? "Deadline" : eventTypeLabel(selectedCalendarItem.type) }}
+                  {{ selectedCalendarItem.kind === "deadline" ? t.deadline : eventTypeLabel(selectedCalendarItem.type) }}
                 </div>
               </div>
               <div
@@ -353,9 +353,9 @@
                 class="rounded-lg border p-3"
                 style="border-color: var(--shell-border); background: var(--shell-card);"
               >
-                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Shortcut</div>
+                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.shortcut }}</div>
                 <button class="btn-ghost text-xs" type="button" @click="openLinkedDeadlineRecord">
-                  Open linked {{ selectedCalendarItem.entityType || "record" }}
+                  {{ t.open_linked }} {{ selectedCalendarItem.entityType || "record" }}
                 </button>
               </div>
               <div
@@ -363,7 +363,7 @@
                 class="rounded-lg border p-3"
                 style="border-color: var(--shell-border); background: var(--shell-card);"
               >
-                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Color</div>
+                <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.color }}</div>
                 <div class="flex items-center gap-2" style="color: var(--shell-text);">
                   <span class="h-3 w-3 rounded-full border border-white/20" :style="{ background: selectedCalendarItem.color || '#22c55e' }"></span>
                   <span>{{ selectedCalendarItem.color || "#22c55e" }}</span>
@@ -371,20 +371,20 @@
               </div>
             </div>
             <div v-if="selectedCalendarItem.kind === 'event'" class="rounded-lg border p-3" style="border-color: var(--shell-border); background: var(--shell-card);">
-              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Repeat</div>
-              <div style="color: var(--shell-text);">{{ selectedCalendarItem.repeat === "yearly" ? "Yearly" : "No repeat" }}</div>
+              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.repeat }}</div>
+              <div style="color: var(--shell-text);">{{ selectedCalendarItem.repeat === "yearly" ? t.repeat_yearly : t.no_repeat }}</div>
             </div>
             <div v-if="selectedCalendarItem.kind === 'event' && (selectedCalendarItem.clientId || selectedCalendarItem.houseId)" class="rounded-lg border p-3" style="border-color: var(--shell-border); background: var(--shell-card);">
-              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Linked records</div>
+              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.linked_records }}</div>
               <div style="color: var(--shell-text);" class="space-y-1">
-                <div v-if="selectedCalendarItem.clientId">Client: {{ clientNameById[selectedCalendarItem.clientId] || "—" }}</div>
-                <div v-if="selectedCalendarItem.houseId">Property: {{ houseNameById[selectedCalendarItem.houseId] || "—" }}</div>
+                <div v-if="selectedCalendarItem.clientId">{{ t.client }}: {{ clientNameById[selectedCalendarItem.clientId] || "—" }}</div>
+                <div v-if="selectedCalendarItem.houseId">{{ t.house }}: {{ houseNameById[selectedCalendarItem.houseId] || "—" }}</div>
               </div>
             </div>
             <div class="rounded-lg border p-4 min-h-36" style="border-color: var(--shell-border); background: var(--shell-card);">
-              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">Note</div>
+              <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.note }}</div>
               <div style="color: var(--shell-text);" class="whitespace-pre-wrap leading-relaxed">
-                {{ selectedCalendarItem.note || "No note added." }}
+                {{ selectedCalendarItem.note || t.no_note_added }}
               </div>
             </div>
           </div>
@@ -398,6 +398,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
+import { useT } from "../lib/i18n";
 import {
   createCalendarEvent,
   importCalendarEvents,
@@ -409,13 +410,14 @@ import { useTopbarActions } from "../lib/topbarActions";
 
 const LOCAL_STORAGE_KEY = "crm_calendar_events_v2";
 const LOCAL_LEGACY_STORAGE_KEY = "crm_calendar_events_v1";
-const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const weekDays = ["E", "T", "K", "N", "R", "L", "P"];
 const CALENDAR_COLOR_PRESETS = ["#4285f4", "#34a853", "#ea4335", "#fbbc05", "#8e24aa"];
-const EVENT_TYPE_OPTIONS = [
-  { value: "meeting", label: "Meeting" },
-  { value: "call", label: "Call" },
-  { value: "deadline", label: "Deadline" },
-];
+const t = useT();
+const EVENT_TYPE_OPTIONS = computed(() => [
+  { value: "meeting", label: t.value.meeting },
+  { value: "call", label: t.value.call },
+  { value: "deadline", label: t.value.deadline },
+]);
 const router = useRouter();
 
 const now = new Date();
@@ -443,8 +445,8 @@ let lastDayTapDate = "";
 let lastDayTapAt = 0;
 
 useTopbarActions(() => [
-  { key: "today", label: "Today", onClick: () => goToday() },
-  { key: "reset-calendar", label: "Reset calendar", onClick: () => resetCalendar() },
+  { key: "today", label: t.value.today, onClick: () => goToday() },
+  { key: "reset-calendar", label: t.value.reset_calendar, onClick: () => resetCalendar() },
 ]);
 
 function toDateKey(d) {
@@ -553,7 +555,7 @@ function sanitizeEvents(list) {
       date: String(item.date),
       note: item.note ? String(item.note) : "",
       color: normalizeHexColor(item.color),
-      type: EVENT_TYPE_OPTIONS.some((o) => o.value === item.type) ? item.type : "meeting",
+      type: EVENT_TYPE_OPTIONS.value.some((o) => o.value === item.type) ? item.type : "meeting",
       clientId: item.clientId ? String(item.clientId) : "",
       houseId: item.houseId ? String(item.houseId) : "",
       repeat: item.repeat === "yearly" ? "yearly" : "none",
@@ -815,7 +817,7 @@ const usedDraftDateColors = computed(() => {
   return new Set(colors);
 });
 
-const eventTypeLabel = (type) => EVENT_TYPE_OPTIONS.find((o) => o.value === type)?.label || "Meeting";
+const eventTypeLabel = (type) => EVENT_TYPE_OPTIONS.value.find((o) => o.value === type)?.label || t.value.meeting;
 
 function isColorTakenForDraftDate(color) {
   return usedDraftDateColors.value.has(normalizeHexColor(color));
@@ -1020,8 +1022,8 @@ async function addEvent() {
 
 async function removeEvent(eventId) {
   const target = events.value.find((event) => event.id === eventId);
-  const label = (target?.title || "").trim() || "this event";
-  if (!confirm(`Delete "${label}"?`)) return;
+  const label = (target?.title || "").trim() || t.value.this_event;
+  if (!confirm(`${t.value.delete} "${label}"?`)) return;
 
   try {
     await removeCalendarEvent(eventId);
@@ -1039,7 +1041,7 @@ async function removeEvent(eventId) {
 }
 
 async function resetCalendar() {
-  if (!confirm("Reset calendar events? This will remove all saved events.")) return;
+  if (!confirm(t.value.calendar_reset_confirm)) return;
 
   try {
     await resetCalendarEvents();

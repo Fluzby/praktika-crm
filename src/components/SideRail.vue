@@ -4,11 +4,11 @@
       <div class="shell-workspace-badge">R</div>
       <div v-if="!collapsed" class="min-w-0">
         <div class="shell-workspace-name truncate">Realestate CRM</div>
-        <div class="shell-workspace-subtle truncate">Workspace</div>
+        <div class="shell-workspace-subtle truncate">{{ t.workspace }}</div>
       </div>
     </div>
 
-    <div v-if="!collapsed" class="shell-nav-group-label">Views</div>
+    <div v-if="!collapsed" class="shell-nav-group-label">{{ t.views }}</div>
     <nav class="shell-nav-list" aria-label="Primary">
       <NavIcon
         to="/dashboard"
@@ -34,14 +34,14 @@
       <NavIcon
         to="/calendar"
         icon="◷"
-        label="Calendar"
+        :label="t.calendar"
         :collapsed="collapsed"
         @click="handleNavigate"
       />
       <NavIcon
         to="/archive"
         icon="🗄"
-        label="Archive"
+        :label="t.archive"
         :collapsed="collapsed"
         @click="handleNavigate"
       />
@@ -62,11 +62,11 @@
         class="shell-sidebar-toggle"
         type="button"
         @click="$emit('toggle-collapse')"
-        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :title="collapsed ? t.expand_sidebar : t.collapse_sidebar"
+        :aria-label="collapsed ? t.expand_sidebar : t.collapse_sidebar"
       >
         <span class="text-base leading-none">{{ collapsed ? "»" : "«" }}</span>
-        <span v-if="!collapsed">Collapse sidebar</span>
+        <span v-if="!collapsed">{{ t.collapse_sidebar }}</span>
       </button>
 
       <div class="shell-user-chip" :class="collapsed ? 'is-collapsed' : ''">
@@ -112,7 +112,7 @@ let authSubscription = null;
 const userDisplayName = computed(() => {
   if (userName.value) return userName.value;
   if (userEmail.value) return userEmail.value;
-  return "Account";
+  return t.value.account;
 });
 
 const userSubtitle = computed(() => {

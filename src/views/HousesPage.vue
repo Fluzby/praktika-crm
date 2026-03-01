@@ -40,24 +40,38 @@
           <table class="w-full min-w-[1180px] text-sm">
             <thead class="bg-white/[0.02] border-b border-white/10">
               <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
-                <th class="px-4 py-3 font-medium">Address</th>
-                <th class="px-4 py-3 font-medium">City</th>
-                <th class="px-4 py-3 font-medium">Availability</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap">Rooms</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap">Size</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap">Price</th>
-                <th class="px-4 py-3 font-medium">Tags</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
-                <th class="px-4 py-3 font-medium whitespace-nowrap text-right">Actions</th>
+                <th v-if="selectionMode" class="px-4 py-3 font-medium w-10">
+                  <input
+                    type="checkbox"
+                    :checked="allVisibleHousesSelected"
+                    @change="toggleSelectAllVisibleHouses"
+                  />
+                </th>
+                <th class="px-4 py-3 font-medium">{{ t.address }}</th>
+                <th class="px-4 py-3 font-medium">{{ t.city }}</th>
+                <th class="px-4 py-3 font-medium">{{ t.availability }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t.rooms }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t.size_m2 }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t.price }}</th>
+                <th class="px-4 py-3 font-medium">{{ t.tags }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t.created }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap text-right">{{ t.actions }}</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="h in filtered"
+                v-for="(h, index) in filtered"
                 :key="h.id"
                 class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer align-top"
-                @click="openHouse(h.id)"
+                @click="selectionMode ? onHouseSelectInteraction(h.id, index, $event) : openHouse(h.id)"
               >
+                <td v-if="selectionMode" class="px-4 py-3" @click.stop>
+                  <input
+                    type="checkbox"
+                    :checked="isHouseSelected(h.id)"
+                    @change="onHouseSelectInteraction(h.id, index, $event)"
+                  />
+                </td>
                 <td class="px-4 py-3">
                   <div class="font-semibold text-white truncate max-w-[260px]">{{ h.address }}</div>
                 </td>
@@ -92,6 +106,7 @@
                 <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(h.created_at) }}</td>
                 <td class="px-4 py-3 text-right" @click.stop>
                   <RowActionsMenu
+                    v-if="!selectionMode"
                     :archived="!!h.is_archived"
                     @archive="onArchiveHouse(h)"
                     @delete="onDeleteHouse(h)"
@@ -100,7 +115,7 @@
               </tr>
 
               <tr v-if="filtered.length === 0">
-                <td colspan="9" class="px-4 py-8 text-center text-white/60">
+                <td :colspan="selectionMode ? 10 : 9" class="px-4 py-8 text-center text-white/60">
                   {{ t.no_houses_found }}
                 </td>
               </tr>
@@ -330,6 +345,12 @@ const q = ref("");
 const showAdd = ref(false);
 const propertyKind = ref("all");
 const dealKind = ref("all");
+const selectionMode = ref(false);
+const selectedHouseIds = ref([]);
+const bulkAvailability = ref("available");
+const bulkBusy = ref(false);
+const lastHouseSelectionIndex = ref(null);
+const lastAvailabilityChange = ref(null);
 
 const creating = ref(false);
 const createError = ref("");
@@ -345,11 +366,6 @@ const fieldSearch = ref("");
 const selectedFiles = ref([]);
 
 const t = useT();
-
-useTopbarActions(() => [
-  { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
-  { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true) },
-]);
 
 const groupLabel = (group) => (settings.lang === "et" ? (group.label_et || group.label) : group.label);
 const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field.label) : field.label);
@@ -499,7 +515,7 @@ const onArchiveHouse = async (houseRow) => {
 };
 
 const onDeleteHouse = async (houseRow) => {
-  if (!confirm(`Delete ${houseRow.address}?`)) return;
+  if (!confirm(`${t.value.delete} ${houseRow.address}?`)) return;
   const { error: e } = await supabase.from("houses").delete().eq("id", houseRow.id);
   if (e) return alert(e.message);
   await load();
@@ -530,6 +546,210 @@ const filtered = computed(() => {
 
     return haystack.includes(term);
   });
+});
+
+const selectedHouseIdSet = computed(() => new Set(selectedHouseIds.value));
+const allVisibleHousesSelected = computed(() =>
+  filtered.value.length > 0 && filtered.value.every((h) => selectedHouseIdSet.value.has(h.id))
+);
+
+const isHouseSelected = (id) => selectedHouseIdSet.value.has(id);
+
+const toggleHouseSelection = (id) => {
+  if (selectedHouseIdSet.value.has(id)) {
+    selectedHouseIds.value = selectedHouseIds.value.filter((x) => x !== id);
+    return;
+  }
+  selectedHouseIds.value = [...selectedHouseIds.value, id];
+};
+
+const onHouseSelectInteraction = (id, index, event) => {
+  const shift = !!event?.shiftKey;
+  if (
+    shift &&
+    Number.isInteger(lastHouseSelectionIndex.value) &&
+    Number.isInteger(index) &&
+    filtered.value.length
+  ) {
+    const start = Math.min(lastHouseSelectionIndex.value, index);
+    const end = Math.max(lastHouseSelectionIndex.value, index);
+    const rangeIds = filtered.value.slice(start, end + 1).map((h) => h.id);
+    const next = new Set(selectedHouseIds.value);
+    const shouldSelect = !next.has(id);
+    for (const rangeId of rangeIds) {
+      if (shouldSelect) next.add(rangeId);
+      else next.delete(rangeId);
+    }
+    selectedHouseIds.value = Array.from(next);
+    lastHouseSelectionIndex.value = index;
+    return;
+  }
+  toggleHouseSelection(id);
+  lastHouseSelectionIndex.value = index;
+};
+
+const toggleSelectAllVisibleHouses = () => {
+  if (allVisibleHousesSelected.value) {
+    const visibleIds = new Set(filtered.value.map((h) => h.id));
+    selectedHouseIds.value = selectedHouseIds.value.filter((id) => !visibleIds.has(id));
+    return;
+  }
+  const merged = new Set(selectedHouseIds.value);
+  for (const h of filtered.value) merged.add(h.id);
+  selectedHouseIds.value = Array.from(merged);
+};
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value;
+  if (!selectionMode.value) {
+    selectedHouseIds.value = [];
+    lastHouseSelectionIndex.value = null;
+  }
+}
+
+async function bulkUpdateAvailability(nextAvailability) {
+  if (!selectedHouseIds.value.length) return;
+  const targetIds = [...selectedHouseIds.value];
+  const prevRows = targetIds.map((id) => {
+    const row = houses.value.find((h) => h.id === id);
+    return { id, availability: row?.availability || "entering" };
+  });
+  const changedRows = prevRows.filter((row) => row.availability !== (nextAvailability || "entering"));
+
+  bulkBusy.value = true;
+  error.value = "";
+  try {
+    const { error: e } = await supabase
+      .from("houses")
+      .update({ availability: nextAvailability || "entering" })
+      .in("id", targetIds);
+    if (e) throw e;
+    await load();
+    lastAvailabilityChange.value = changedRows.length ? { rows: changedRows } : null;
+    selectedHouseIds.value = [];
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+async function undoLastAvailabilityChange() {
+  const rows = lastAvailabilityChange.value?.rows || [];
+  if (!rows.length) return;
+
+  const byAvailability = new Map();
+  for (const row of rows) {
+    const key = row.availability || "entering";
+    const ids = byAvailability.get(key) || [];
+    ids.push(row.id);
+    byAvailability.set(key, ids);
+  }
+
+  bulkBusy.value = true;
+  error.value = "";
+  try {
+    for (const [availability, ids] of byAvailability.entries()) {
+      const { error: e } = await supabase
+        .from("houses")
+        .update({ availability })
+        .in("id", ids);
+      if (e) throw e;
+    }
+    await load();
+    lastAvailabilityChange.value = null;
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+async function bulkArchiveHouses() {
+  if (!selectedHouseIds.value.length) return;
+  bulkBusy.value = true;
+  error.value = "";
+  try {
+    await Promise.all(
+      selectedHouseIds.value.map((id) =>
+        archiveEntity({ entityType: "house", entityId: id, archived: false })
+      )
+    );
+    await load();
+    selectedHouseIds.value = [];
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+async function bulkDeleteHouses() {
+  if (!selectedHouseIds.value.length) return;
+  if (!confirm(t.value.delete_selected_houses_confirm)) return;
+  bulkBusy.value = true;
+  error.value = "";
+  try {
+    const { error: e } = await supabase
+      .from("houses")
+      .delete()
+      .in("id", selectedHouseIds.value);
+    if (e) throw e;
+    await load();
+    selectedHouseIds.value = [];
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+useTopbarActions(() => {
+  if (!selectionMode.value) {
+    return [
+      { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value || bulkBusy.value },
+      { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true), disabled: bulkBusy.value },
+      { key: "select-mode", label: t.value.select_mode, onClick: toggleSelectionMode },
+    ];
+  }
+
+  return [
+    {
+      key: "select-visible",
+      label: allVisibleHousesSelected.value ? t.value.clear_selection : t.value.select_all_visible,
+      onClick: toggleSelectAllVisibleHouses,
+      disabled: !filtered.value.length || bulkBusy.value,
+    },
+    {
+      key: "bulk-archive",
+      label: t.value.archive_selected,
+      onClick: bulkArchiveHouses,
+      disabled: !selectedHouseIds.value.length || bulkBusy.value,
+    },
+    {
+      key: "bulk-availability-select",
+      type: "select",
+      value: bulkAvailability.value,
+      onChange: async (v) => {
+        bulkAvailability.value = v;
+        if (!selectedHouseIds.value.length || bulkBusy.value) return;
+        await bulkUpdateAvailability(v);
+      },
+      disabled: !selectedHouseIds.value.length || bulkBusy.value,
+      options: [
+        { value: "entering", label: t.value.availability_entering },
+        { value: "available", label: t.value.availability_available },
+        { value: "unavailable", label: t.value.availability_unavailable },
+      ],
+    },
+    {
+      key: "undo-bulk-availability",
+      label: t.value.undo,
+      onClick: undoLastAvailabilityChange,
+      disabled: bulkBusy.value || !(lastAvailabilityChange.value?.rows?.length > 0),
+    },
+    { key: "exit-select-mode", label: t.value.exit_select_mode, onClick: toggleSelectionMode, disabled: bulkBusy.value },
+  ];
 });
 
 const APARTMENT_TOKENS = [
@@ -608,6 +828,8 @@ async function load() {
     if (e) throw e;
 
     houses.value = data || [];
+    const liveIds = new Set(houses.value.map((h) => h.id));
+    selectedHouseIds.value = selectedHouseIds.value.filter((id) => liveIds.has(id));
   } catch (err) {
     error.value = err?.message || String(err);
   } finally {

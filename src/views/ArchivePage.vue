@@ -5,24 +5,24 @@
         <input
           class="input flex-1"
           v-model.trim="q"
-          placeholder="Search archived clients and properties..."
+          :placeholder="t.search_archived_placeholder"
         />
-        <div class="text-sm text-white/50">{{ filteredClients.length + filteredHouses.length }} results</div>
+        <div class="text-sm text-white/50">{{ filteredClients.length + filteredHouses.length }} {{ t.results }}</div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
       <section class="glass-soft p-4">
-        <h2 class="font-semibold mb-3">Archived Clients</h2>
-        <div v-if="loading" class="text-white/60 text-sm">Loading...</div>
+        <h2 class="font-semibold mb-3">{{ t.archived_clients }}</h2>
+        <div v-if="loading" class="text-white/60 text-sm">{{ t.loading }}</div>
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[520px] text-sm">
             <thead class="border-b border-white/10 text-xs uppercase tracking-[0.08em] text-white/50">
               <tr>
-                <th class="px-3 py-2 text-left">Name</th>
-                <th class="px-3 py-2 text-left">Email</th>
-                <th class="px-3 py-2 text-left">Archived</th>
-                <th class="px-3 py-2 text-right">Actions</th>
+                <th class="px-3 py-2 text-left">{{ t.name }}</th>
+                <th class="px-3 py-2 text-left">{{ t.email }}</th>
+                <th class="px-3 py-2 text-left">{{ t.archived }}</th>
+                <th class="px-3 py-2 text-right">{{ t.actions }}</th>
               </tr>
             </thead>
             <tbody>
@@ -31,12 +31,12 @@
                 <td class="px-3 py-2 text-white/70">{{ c.email || "—" }}</td>
                 <td class="px-3 py-2 text-white/50">{{ formatDate(c.updated_at || c.created_at) }}</td>
                 <td class="px-3 py-2 text-right">
-                  <button class="btn-ghost text-xs mr-2" @click="restoreClient(c)">Restore</button>
-                  <button class="btn-ghost text-xs text-red-300" @click="deleteClient(c)">Delete</button>
+                  <button class="btn-ghost text-xs mr-2" @click="restoreClient(c)">{{ t.restore }}</button>
+                  <button class="btn-ghost text-xs text-red-300" @click="deleteClient(c)">{{ t.delete }}</button>
                 </td>
               </tr>
               <tr v-if="!loading && filteredClients.length === 0">
-                <td colspan="4" class="px-3 py-6 text-center text-white/60">No archived clients</td>
+                <td colspan="4" class="px-3 py-6 text-center text-white/60">{{ t.no_archived_clients }}</td>
               </tr>
             </tbody>
           </table>
@@ -44,16 +44,16 @@
       </section>
 
       <section class="glass-soft p-4">
-        <h2 class="font-semibold mb-3">Archived Properties</h2>
-        <div v-if="loading" class="text-white/60 text-sm">Loading...</div>
+        <h2 class="font-semibold mb-3">{{ t.archived_properties }}</h2>
+        <div v-if="loading" class="text-white/60 text-sm">{{ t.loading }}</div>
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[560px] text-sm">
             <thead class="border-b border-white/10 text-xs uppercase tracking-[0.08em] text-white/50">
               <tr>
-                <th class="px-3 py-2 text-left">Address</th>
-                <th class="px-3 py-2 text-left">City</th>
-                <th class="px-3 py-2 text-left">Price</th>
-                <th class="px-3 py-2 text-right">Actions</th>
+                <th class="px-3 py-2 text-left">{{ t.address }}</th>
+                <th class="px-3 py-2 text-left">{{ t.city }}</th>
+                <th class="px-3 py-2 text-left">{{ t.price }}</th>
+                <th class="px-3 py-2 text-right">{{ t.actions }}</th>
               </tr>
             </thead>
             <tbody>
@@ -62,12 +62,12 @@
                 <td class="px-3 py-2 text-white/70">{{ h.city || "—" }}</td>
                 <td class="px-3 py-2 text-white/70">€{{ h.price ?? "—" }}</td>
                 <td class="px-3 py-2 text-right">
-                  <button class="btn-ghost text-xs mr-2" @click="restoreHouse(h)">Restore</button>
-                  <button class="btn-ghost text-xs text-red-300" @click="deleteHouse(h)">Delete</button>
+                  <button class="btn-ghost text-xs mr-2" @click="restoreHouse(h)">{{ t.restore }}</button>
+                  <button class="btn-ghost text-xs text-red-300" @click="deleteHouse(h)">{{ t.delete }}</button>
                 </td>
               </tr>
               <tr v-if="!loading && filteredHouses.length === 0">
-                <td colspan="4" class="px-3 py-6 text-center text-white/60">No archived properties</td>
+                <td colspan="4" class="px-3 py-6 text-center text-white/60">{{ t.no_archived_properties }}</td>
               </tr>
             </tbody>
           </table>
@@ -82,14 +82,16 @@ import { computed, onMounted, ref } from "vue";
 import { supabase } from "../lib/supabase";
 import { archiveEntity } from "../lib/entityActions";
 import { useTopbarActions } from "../lib/topbarActions";
+import { useT } from "../lib/i18n";
 
 const loading = ref(false);
 const q = ref("");
 const clients = ref([]);
 const houses = ref([]);
+const t = useT();
 
 useTopbarActions(() => [
-  { key: "refresh", label: "Refresh", onClick: () => load(), disabled: loading.value },
+  { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
 ]);
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString() : "—");
@@ -141,13 +143,13 @@ const restoreHouse = async (row) => {
 };
 
 const deleteClient = async (row) => {
-  if (!confirm(`Delete ${row.full_name}?`)) return;
+  if (!confirm(`${t.value.delete} ${row.full_name}?`)) return;
   await supabase.from("clients").delete().eq("id", row.id);
   await load();
 };
 
 const deleteHouse = async (row) => {
-  if (!confirm(`Delete ${row.address}?`)) return;
+  if (!confirm(`${t.value.delete} ${row.address}?`)) return;
   await supabase.from("houses").delete().eq("id", row.id);
   await load();
 };
