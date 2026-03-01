@@ -216,7 +216,14 @@
                   :class="task.entityId ? 'cursor-pointer hover:bg-white/[0.05]' : ''"
                   @click="task.entityId && openTaskEntity(task)"
                 >
-                  <div class="font-medium">• {{ task.title }}</div>
+                  <div class="font-medium flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full" :style="{ background: task.color || '#22c55e' }"></span>
+                    <span>{{ task.title }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-white/60">
+                      {{ taskTypeLabel(task.type) }}
+                    </span>
+                  </div>
+                  <div v-if="task.note" class="opacity-80 mt-0.5 whitespace-pre-wrap">{{ task.note }}</div>
                   <div class="opacity-70 flex items-center justify-between gap-2">
                     <span>{{ task.entityType }}</span>
                     <button
@@ -270,7 +277,14 @@
                 :disabled="!task.entityId"
                 @click="openTaskEntity(task)"
               >
-                <div class="truncate font-medium">{{ task.title }}</div>
+                <div class="truncate font-medium flex items-center gap-2">
+                  <span class="h-2 w-2 rounded-full" :style="{ background: task.color || '#22c55e' }"></span>
+                  <span>{{ task.title }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-white/60">
+                    {{ taskTypeLabel(task.type) }}
+                  </span>
+                </div>
+                <div v-if="task.note" class="text-white/45 mt-1 truncate">{{ task.note }}</div>
                 <div class="text-white/45 mt-1 flex items-center justify-between gap-2">
                   <span>{{ task.dueDate || t.no_due_date }} • {{ task.entityType }}</span>
                   <span v-if="task.entityId" class="text-white/65">{{ t.open }}</span>
@@ -883,6 +897,16 @@ const formatTaskCount = (count) => {
   if (n <= 0) return "";
   if (n > 9) return "9+";
   return String(n);
+};
+
+const taskTypeLabel = (type) => {
+  const map = {
+    follow_up: t.value.task_type_follow_up,
+    meeting: t.value.task_type_meeting,
+    call: t.value.task_type_call,
+    deadline: t.value.task_type_deadline,
+  };
+  return map[type] || t.value.task_type_follow_up;
 };
 
 const dashboardPrevMonth = () => {

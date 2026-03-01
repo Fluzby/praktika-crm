@@ -884,7 +884,25 @@ function handleDayPress(day) {
   const isDoubleTap = lastDayTapDate === day.date && now - lastDayTapAt <= DAY_DOUBLE_TAP_MS;
   lastDayTapDate = day.date;
   lastDayTapAt = now;
-  selectDate(day.date, isDoubleTap);
+  if (!isDoubleTap) {
+    selectDate(day.date, false);
+    return;
+  }
+
+  const dayEvents = events.value.filter((event) => eventOccursOnDate(event, day.date));
+  const dayDeadlines = deadlinesByDate.value[day.date] || [];
+  const totalItems = dayEvents.length + dayDeadlines.length;
+
+  if (totalItems === 1) {
+    if (dayEvents.length === 1) {
+      openEventDetails(dayEvents[0]);
+      return;
+    }
+    openDeadlineDetails(dayDeadlines[0]);
+    return;
+  }
+
+  selectDate(day.date, true);
 }
 
 function prevMonth() {
@@ -947,7 +965,7 @@ async function loadDeadlinesForMonth() {
   const monthEnd = new Date(viewYear.value, viewMonth.value + 1, 0, 23, 59, 59, 999);
   const { data, error } = await supabase
     .from("tasks")
-    .select("id,title,due_at,status,entity_type,entity_id")
+    .select("id,title,notes,due_at,status,entity_type,entity_id")
     .gte("due_at", monthStart.toISOString())
     .lte("due_at", monthEnd.toISOString())
     .neq("status", "cancelled")
@@ -963,6 +981,7 @@ async function loadDeadlinesForMonth() {
     map[dateKey].push({
       id: row.id,
       title: row.title,
+      note: row.notes || "",
       status: row.status,
       entityType: row.entity_type,
       entityId: row.entity_id,
@@ -1098,7 +1117,7 @@ function openDeadlineDetails(deadline) {
     kind: "deadline",
     id: deadline.id,
     title: deadline.title,
-    note: "",
+    note: deadline.note || "",
     date,
     entityType: deadline.entityType,
     entityId: deadline.entityId,

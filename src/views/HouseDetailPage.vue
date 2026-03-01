@@ -315,6 +315,24 @@
           <div class="space-y-2 mb-3">
             <input class="input" v-model.trim="newTaskTitle" :placeholder="t.add_property_task" />
             <input class="input" type="date" v-model="newTaskDueDate" />
+            <select class="input" v-model="newTaskType">
+              <option value="follow_up">{{ t.task_type_follow_up }}</option>
+              <option value="meeting">{{ t.task_type_meeting }}</option>
+              <option value="call">{{ t.task_type_call }}</option>
+              <option value="deadline">{{ t.task_type_deadline }}</option>
+            </select>
+            <textarea class="textarea" rows="2" v-model.trim="newTaskNote" :placeholder="t.task_note_optional"></textarea>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs text-white/60">{{ t.task_color }}</span>
+              <button
+                v-for="preset in TASK_COLOR_PRESETS"
+                :key="preset"
+                type="button"
+                class="h-5 w-5 rounded-md border"
+                :style="{ background: preset, borderColor: newTaskColor === preset ? 'white' : 'rgba(255,255,255,0.28)' }"
+                @click="newTaskColor = preset"
+              ></button>
+            </div>
             <button class="btn w-full" type="button" @click="addHouseTask" :disabled="!newTaskTitle">
               {{ t.add_task }}
             </button>
@@ -325,8 +343,15 @@
               <div class="flex items-start gap-2">
                 <input type="checkbox" :checked="task.done" @change="toggleHouseTask(task.id)" class="mt-1" />
                 <div class="min-w-0 flex-1">
-                  <div class="text-sm" :class="task.done ? 'line-through text-white/40' : ''">{{ task.title }}</div>
+                  <div class="text-sm flex items-center gap-2" :class="task.done ? 'line-through text-white/40' : ''">
+                    <span class="h-2 w-2 rounded-full" :style="{ background: task.color || '#22c55e' }"></span>
+                    <span>{{ task.title }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-white/60">
+                      {{ taskTypeLabel(task.type) }}
+                    </span>
+                  </div>
                   <div class="text-xs text-white/50 mt-1">{{ t.due }} {{ task.dueDate || t.unscheduled }}</div>
+                  <div v-if="task.note" class="text-xs text-white/45 mt-1 whitespace-pre-wrap">{{ task.note }}</div>
                 </div>
                 <button class="text-xs text-red-300 hover:text-red-200" type="button" @click="removeHouseTask(task.id)">{{ t.delete }}</button>
               </div>
@@ -517,12 +542,25 @@ const activity = ref([]);
 const houseTasks = ref([]);
 const newTaskTitle = ref("");
 const newTaskDueDate = ref("");
+const newTaskType = ref("follow_up");
+const newTaskNote = ref("");
+const newTaskColor = ref("#22c55e");
 const rawDraft = ref({});
 const isEditing = ref(false);
 const showAllInfo = ref(false);
 const hideEmptyXlsxFields = ref(true);
 
 const t = useT();
+const TASK_COLOR_PRESETS = ["#4285f4", "#34a853", "#ea4335", "#fbbc05", "#8e24aa", "#22c55e"];
+const taskTypeLabel = (type) => {
+  const map = {
+    follow_up: t.value.task_type_follow_up,
+    meeting: t.value.task_type_meeting,
+    call: t.value.task_type_call,
+    deadline: t.value.task_type_deadline,
+  };
+  return map[type] || t.value.task_type_follow_up;
+};
 const openHouseTasks = computed(() => houseTasks.value.filter((x) => !x.done));
 const timelineEntries = computed(() => {
   const db = (activity.value || []).map((a) => ({
@@ -821,6 +859,9 @@ const addHouseTask = async () => {
     entityId: id,
     title: newTaskTitle.value,
     dueDate: newTaskDueDate.value || null,
+    type: newTaskType.value,
+    note: newTaskNote.value,
+    color: newTaskColor.value,
   });
   logLocalActivity({
     entity: "house",
@@ -830,6 +871,9 @@ const addHouseTask = async () => {
   });
   newTaskTitle.value = "";
   newTaskDueDate.value = "";
+  newTaskType.value = "follow_up";
+  newTaskNote.value = "";
+  newTaskColor.value = TASK_COLOR_PRESETS[0];
   await loadLocalCRMState();
 };
 

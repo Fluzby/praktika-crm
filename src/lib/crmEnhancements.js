@@ -25,6 +25,12 @@ const safeWrite = (key, value) => {
 };
 
 const uuid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+const toLocalDateKey = (date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
 
 export const CLIENT_PIPELINE = [
   "new_lead",
@@ -139,8 +145,7 @@ export function deleteTask(taskId) {
 
 export function getDashboardTasksSummary() {
   const tasks = getTasks();
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = toLocalDateKey(new Date());
   return {
     overdue: tasks.filter((t) => !t.done && t.dueDate && t.dueDate < todayStr).length,
     today: tasks.filter((t) => !t.done && t.dueDate === todayStr).length,
