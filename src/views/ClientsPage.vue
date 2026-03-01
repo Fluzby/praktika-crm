@@ -31,7 +31,6 @@
             <thead class="bg-white/[0.02] border-b border-white/10">
               <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
                 <th class="px-4 py-3 font-medium">Client</th>
-                <th class="px-4 py-3 font-medium">Pipeline</th>
                 <th class="px-4 py-3 font-medium">Phone</th>
                 <th class="px-4 py-3 font-medium">Email</th>
                 <th class="px-4 py-3 font-medium">Notes</th>
@@ -48,9 +47,6 @@
               >
                 <td class="px-4 py-3">
                   <div class="font-semibold text-white truncate max-w-[240px]">{{ c.full_name }}</div>
-                </td>
-                <td class="px-4 py-3">
-                  <span class="chip whitespace-nowrap">{{ clientStageLabel(c.id) }}</span>
                 </td>
                 <td class="px-4 py-3 text-white/75 whitespace-nowrap">{{ c.phone || "—" }}</td>
                 <td class="px-4 py-3 text-white/75">
@@ -70,7 +66,7 @@
               </tr>
 
               <tr v-if="filtered.length === 0">
-                <td colspan="7" class="px-4 py-8 text-center text-white/60">
+                <td colspan="6" class="px-4 py-8 text-center text-white/60">
                   {{ t.no_clients_found }}
                 </td>
               </tr>
@@ -100,6 +96,24 @@
         <div>
           <label class="text-sm text-white/60">{{ t.email }}</label>
           <input class="input mt-1" type="email" v-model.trim="form.email" />
+        </div>
+
+        <div>
+          <label class="text-sm text-white/60">{{ t.deal_preference }}</label>
+          <select class="input mt-1" v-model="form.deal_preference">
+            <option value="any">{{ t.deal_preference_any }}</option>
+            <option value="buy">{{ t.deal_preference_buy }}</option>
+            <option value="rent">{{ t.deal_preference_rent }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-white/60">{{ t.property_preference }}</label>
+          <select class="input mt-1" v-model="form.property_preference">
+            <option value="any">{{ t.property_preference_any }}</option>
+            <option value="apartment">{{ t.property_preference_apartment }}</option>
+            <option value="house">{{ t.property_preference_house }}</option>
+          </select>
         </div>
 
         <div class="md:col-span-2">
@@ -152,10 +166,6 @@ import { logActivity } from "../lib/activity";
 import Modal from "../components/Modal.vue";
 import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { useT } from "../lib/i18n";
-import {
-  CLIENT_PIPELINE_LABELS,
-  getClientStatus,
-} from "../lib/crmEnhancements";
 import { archiveEntity } from "../lib/entityActions";
 import { useTopbarActions } from "../lib/topbarActions";
 
@@ -182,11 +192,12 @@ const form = ref({
   full_name: "",
   phone: "",
   email: "",
+  deal_preference: "any",
+  property_preference: "any",
   notes: "",
 });
 
 const t = useT();
-const clientStageLabel = (clientId) => CLIENT_PIPELINE_LABELS[getClientStatus(clientId)] || "New Lead";
 
 useTopbarActions(() => [
   { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value },
@@ -297,14 +308,27 @@ const createClient = async () => {
   createOk.value = false;
 
   try {
-    const payload = {
+    const basePayload = {
       full_name: form.value.full_name,
       phone: form.value.phone || null,
       email: form.value.email || null,
       notes: form.value.notes || null,
     };
+    const payload = {
+      ...basePayload,
+      deal_preference: form.value.deal_preference === "any" ? null : form.value.deal_preference,
+      property_preference: form.value.property_preference === "any" ? null : form.value.property_preference,
+    };
 
-    const { data: clientRow, error: e } = await supabase.from("clients").insert(payload).select().single();
+    let { data: clientRow, error: e } = await supabase.from("clients").insert(payload).select().single();
+    const msg = String(e?.message || e || "");
+    const missingPrefCols =
+      msg.includes("deal_preference") || msg.includes("property_preference");
+    if (e && missingPrefCols) {
+      const retry = await supabase.from("clients").insert(basePayload).select().single();
+      clientRow = retry.data;
+      e = retry.error;
+    }
     if (e) throw e;
 
     await logActivity({ type: "create", entity: "client", entity_id: clientRow.id, label: payload.full_name });
@@ -323,7 +347,14 @@ const createClient = async () => {
       if (matchErr) throw matchErr;
     }
 
-    form.value = { full_name: "", phone: "", email: "", notes: "" };
+    form.value = {
+      full_name: "",
+      phone: "",
+      email: "",
+      deal_preference: "any",
+      property_preference: "any",
+      notes: "",
+    };
     alreadyInterested.value = false;
     interestedHouseId.value = "";
     await load();

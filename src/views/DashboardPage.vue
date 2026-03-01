@@ -543,6 +543,24 @@
           <input class="input mt-1" type="email" v-model.trim="clientForm.email" />
         </div>
 
+        <div>
+          <label class="text-sm text-white/60">{{ t.deal_preference }}</label>
+          <select class="input mt-1" v-model="clientForm.deal_preference">
+            <option value="any">{{ t.deal_preference_any }}</option>
+            <option value="buy">{{ t.deal_preference_buy }}</option>
+            <option value="rent">{{ t.deal_preference_rent }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-white/60">{{ t.property_preference }}</label>
+          <select class="input mt-1" v-model="clientForm.property_preference">
+            <option value="any">{{ t.property_preference_any }}</option>
+            <option value="apartment">{{ t.property_preference_apartment }}</option>
+            <option value="house">{{ t.property_preference_house }}</option>
+          </select>
+        </div>
+
         <div class="md:col-span-2">
           <label class="text-sm text-white/60">{{ t.notes }}</label>
           <textarea class="textarea mt-1" rows="4" v-model.trim="clientForm.notes"></textarea>
@@ -655,6 +673,8 @@ const clientForm = ref({
   full_name: "",
   phone: "",
   email: "",
+  deal_preference: "any",
+  property_preference: "any",
   notes: "",
 });
 
@@ -1230,14 +1250,27 @@ const createClient = async () => {
   createClientOk.value = false;
 
   try {
-    const payload = {
+    const basePayload = {
       full_name: clientForm.value.full_name,
       phone: clientForm.value.phone || null,
       email: clientForm.value.email || null,
       notes: clientForm.value.notes || null,
     };
+    const payload = {
+      ...basePayload,
+      deal_preference: clientForm.value.deal_preference === "any" ? null : clientForm.value.deal_preference,
+      property_preference: clientForm.value.property_preference === "any" ? null : clientForm.value.property_preference,
+    };
 
-    const { data: clientRow, error: e } = await supabase.from("clients").insert(payload).select().single();
+    let { data: clientRow, error: e } = await supabase.from("clients").insert(payload).select().single();
+    const msg = String(e?.message || e || "");
+    const missingPrefCols =
+      msg.includes("deal_preference") || msg.includes("property_preference");
+    if (e && missingPrefCols) {
+      const retry = await supabase.from("clients").insert(basePayload).select().single();
+      clientRow = retry.data;
+      e = retry.error;
+    }
     if (e) throw e;
 
     await logActivity({ type: "create", entity: "client", entity_id: clientRow.id, label: payload.full_name });
@@ -1256,7 +1289,14 @@ const createClient = async () => {
       if (matchErr) throw matchErr;
     }
 
-    clientForm.value = { full_name: "", phone: "", email: "", notes: "" };
+    clientForm.value = {
+      full_name: "",
+      phone: "",
+      email: "",
+      deal_preference: "any",
+      property_preference: "any",
+      notes: "",
+    };
     clientAlreadyInterested.value = false;
     clientInterestedHouseId.value = "";
     await load();

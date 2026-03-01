@@ -29,13 +29,33 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: client, error: cErr } = await supabase
+    let client: any = null;
+    const clientWithPrefs = await supabase
       .from("clients")
-      .select("id, full_name, notes, min_price, max_price, min_rooms, max_rooms, preferred_tags, updated_at")
+      .select("id, full_name, notes, deal_preference, property_preference, min_price, max_price, min_rooms, max_rooms, preferred_tags, updated_at")
       .eq("id", client_id)
       .single();
 
-    if (cErr || !client) throw cErr;
+    if (!clientWithPrefs.error && clientWithPrefs.data) {
+      client = clientWithPrefs.data;
+    } else {
+      const cMsg = String(clientWithPrefs.error?.message || clientWithPrefs.error || "");
+      const missingPrefCols =
+        cMsg.includes("deal_preference") || cMsg.includes("property_preference");
+      if (!missingPrefCols) throw clientWithPrefs.error;
+
+      const clientLegacy = await supabase
+        .from("clients")
+        .select("id, full_name, notes, min_price, max_price, min_rooms, max_rooms, preferred_tags, updated_at")
+        .eq("id", client_id)
+        .single();
+      if (clientLegacy.error || !clientLegacy.data) throw clientLegacy.error;
+      client = {
+        ...clientLegacy.data,
+        deal_preference: null,
+        property_preference: null,
+      };
+    }
 
     if (!force) {
       const { data: cached } = await supabase
@@ -71,7 +91,7 @@ serve(async (req) => {
     const buildHouseQuery = () => {
       let q = supabase
         .from("houses")
-        .select("id, address, city, price, rooms, tags, description")
+        .select("id, address, city, price, rooms, tags, description, deal_type, object_type")
         .order("created_at", { ascending: false });
 
       if (client.min_price != null) q = q.gte("price", client.min_price);
@@ -98,7 +118,57 @@ serve(async (req) => {
       });
     }
 
-    const filteredHouses = (houses || []).filter((h) => !rejectedIds.has(h.id));
+    const APARTMENT_TOKENS = ["apartment", "flat", "condo", "korter", "korteri", "korterelamu"];
+    const HOUSE_TOKENS = ["house", "detached", "townhouse", "villa", "maja", "eramu", "ridamaja", "paarismaja", "suvila"];
+    const SALE_TOKENS = ["sale", "sell", "for sale", "buy", "ost", "müük", "muuk", "müüa"];
+    const RENT_TOKENS = ["rent", "rental", "lease", "for rent", "üür", "uur", "üürile", "rentida"];
+
+    const classifyPropertyType = (house: any) => {
+      const fields = [house?.object_type, ...(house?.tags || [])];
+      const haystack = fields
+        .filter((v: unknown) => v != null && String(v).trim() !== "")
+        .map((v: unknown) => String(v).toLowerCase())
+        .join(" ");
+      if (!haystack) return "unknown";
+      if (APARTMENT_TOKENS.some((token) => haystack.includes(token))) return "apartment";
+      if (HOUSE_TOKENS.some((token) => haystack.includes(token))) return "house";
+      return "unknown";
+    };
+
+    const classifyDealType = (house: any) => {
+      const fields = [house?.deal_type, ...(house?.tags || [])];
+      const haystack = fields
+        .filter((v: unknown) => v != null && String(v).trim() !== "")
+        .map((v: unknown) => String(v).toLowerCase())
+        .join(" ");
+      if (!haystack) return "unknown";
+      const isSale = SALE_TOKENS.some((token) => haystack.includes(token));
+      const isRent = RENT_TOKENS.some((token) => haystack.includes(token));
+      if (isSale && !isRent) return "sale";
+      if (isRent && !isSale) return "rent";
+      return "unknown";
+    };
+
+    const desiredDeal =
+      client.deal_preference === "buy" ? "sale" :
+      client.deal_preference === "rent" ? "rent" :
+      "any";
+    const desiredProperty =
+      client.property_preference === "apartment" ? "apartment" :
+      client.property_preference === "house" ? "house" :
+      "any";
+
+    let prefFilteredHouses = houses;
+    if (desiredDeal !== "any") {
+      const subset = prefFilteredHouses.filter((h) => classifyDealType(h) === desiredDeal);
+      if (subset.length > 0) prefFilteredHouses = subset;
+    }
+    if (desiredProperty !== "any") {
+      const subset = prefFilteredHouses.filter((h) => classifyPropertyType(h) === desiredProperty);
+      if (subset.length > 0) prefFilteredHouses = subset;
+    }
+
+    const filteredHouses = (prefFilteredHouses || []).filter((h) => !rejectedIds.has(h.id));
     if (filteredHouses.length === 0) {
       return new Response(JSON.stringify([]), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -173,6 +243,8 @@ Client notes:
 ${client.notes || "No notes"}
 
 Client preferences:
+- Deal preference: ${client.deal_preference || "any"}
+- Property preference: ${client.property_preference || "any"}
 - Min price: ${client.min_price ?? "any"}
 - Max price: ${client.max_price ?? "any"}
 - Min rooms: ${client.min_rooms ?? "any"}
@@ -188,6 +260,8 @@ ${batchHouses
 ${i + 1}) id=${h.id}
 Address: ${h.address}
 City: ${h.city || "—"}
+Deal type: ${h.deal_type || "—"}
+Property type: ${h.object_type || "—"}
 Price: ${h.price ?? "—"}
 Rooms: ${h.rooms ?? "—"}
 Tags: ${houseTags.join(", ") || "—"}

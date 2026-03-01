@@ -9,7 +9,6 @@
           {{ t.client_record }}
         </p>
         <div class="mt-2 flex flex-wrap gap-2">
-          <span class="chip">{{ clientPipelineLabel }}</span>
           <span class="chip">Open tasks: {{ openClientTasks.length }}</span>
         </div>
       </div>
@@ -112,10 +111,10 @@
             <div
               v-for="h in visibleAiHouseCards"
               :key="h.id"
-              class="rounded-xl border p-4 transition"
+              class="rounded-xl border p-4 transition-all duration-150"
               :class="h._picked
                 ? 'border-emerald-400/60 bg-emerald-400/8'
-                : 'border-white/12 bg-white/[0.02] hover:bg-white/[0.05]'"
+                : 'border-white/12 bg-white/[0.02] hover:bg-white/[0.08] hover:border-white/35 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.16)]'"
             >
               <div class="flex items-center justify-between gap-2">
                 <div class="font-semibold text-white truncate cursor-pointer" @click="$router.push(`/houses/${h.id}`)">
@@ -193,6 +192,24 @@
 
           <div class="grid gap-3 md:grid-cols-2">
             <div>
+              <label class="text-sm text-white/60">{{ t.deal_preference }}</label>
+              <select class="input mt-1" v-model="edit.deal_preference">
+                <option value="any">{{ t.deal_preference_any }}</option>
+                <option value="buy">{{ t.deal_preference_buy }}</option>
+                <option value="rent">{{ t.deal_preference_rent }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-sm text-white/60">{{ t.property_preference }}</label>
+              <select class="input mt-1" v-model="edit.property_preference">
+                <option value="any">{{ t.property_preference_any }}</option>
+                <option value="apartment">{{ t.property_preference_apartment }}</option>
+                <option value="house">{{ t.property_preference_house }}</option>
+              </select>
+            </div>
+
+            <div>
               <label class="text-sm text-white/60">{{ t.min_price }}</label>
               <input class="input mt-1" type="number" v-model.number="edit.min_price" />
             </div>
@@ -222,16 +239,6 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
-        <div class="glass p-6">
-          <h2 class="text-sm font-semibold text-white/80 mb-3">Client Pipeline</h2>
-          <select class="input" v-model="clientStatus" @change="onClientStatusChange">
-            <option v-for="s in CLIENT_PIPELINE" :key="s" :value="s">
-              {{ CLIENT_PIPELINE_LABELS[s] }}
-            </option>
-          </select>
-          <p class="text-xs text-white/50 mt-2">Track lead progress across the deal cycle.</p>
-        </div>
-
         <div class="glass-soft p-6">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-white/80">Follow-up Tasks</h2>
@@ -333,12 +340,8 @@ import { logActivity } from "../lib/activity";
 import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { useT } from "../lib/i18n";
 import {
-  CLIENT_PIPELINE,
-  CLIENT_PIPELINE_LABELS,
-  getClientStatus,
   getEntityLocalActivity,
   logLocalActivity,
-  setClientStatus,
 } from "../lib/crmEnhancements";
 import {
   createEntityTask,
@@ -369,7 +372,6 @@ const matchedLoading = ref(false);
 const hideRejected = ref(true);
 const autoMatching = ref(false);
 const activity = ref([]);
-const clientStatus = ref("new_lead");
 const newTaskTitle = ref("");
 const newTaskDueDate = ref("");
 const clientTasks = ref([]);
@@ -380,7 +382,6 @@ let toastTimer = null;
 
 const t = useT();
 
-const clientPipelineLabel = computed(() => CLIENT_PIPELINE_LABELS[clientStatus.value] || "New Lead");
 const openClientTasks = computed(() => clientTasks.value.filter((x) => !x.done));
 const interestedMatchesCount = computed(() => matched.value.filter((x) => x.status === "interested").length);
 const visibleAiHouseCards = computed(() =>
@@ -451,22 +452,11 @@ const loadActivity = async () => {
 };
 
 const loadLocalCRMState = async () => {
-  clientStatus.value = getClientStatus(id);
   try {
     clientTasks.value = await loadEntityTasks("client", id);
   } catch {
     clientTasks.value = [];
   }
-};
-
-const onClientStatusChange = () => {
-  setClientStatus(id, clientStatus.value);
-  logLocalActivity({
-    entity: "client",
-    entity_id: id,
-    type: "pipeline",
-    label: `Client stage changed to ${CLIENT_PIPELINE_LABELS[clientStatus.value]}`,
-  });
 };
 
 const addClientTask = async () => {
@@ -526,6 +516,8 @@ const load = async () => {
     phone: data.phone,
     email: data.email,
     notes: data.notes,
+    deal_preference: data.deal_preference || "any",
+    property_preference: data.property_preference || "any",
     min_price: data.min_price,
     max_price: data.max_price,
     min_rooms: data.min_rooms,
@@ -744,20 +736,38 @@ const save = async () => {
     return;
   }
 
-  const { error: e } = await supabase
+  const basePayload = {
+    full_name: edit.value.full_name,
+    phone: edit.value.phone || null,
+    email: edit.value.email || null,
+    notes: edit.value.notes || null,
+    min_price: edit.value.min_price ?? null,
+    max_price: edit.value.max_price ?? null,
+    min_rooms: edit.value.min_rooms ?? null,
+    max_rooms: edit.value.max_rooms ?? null,
+    preferred_tags: parseTagsInput(edit.value.preferred_tags_input),
+  };
+  const fullPayload = {
+    ...basePayload,
+    deal_preference: edit.value.deal_preference === "any" ? null : edit.value.deal_preference,
+    property_preference: edit.value.property_preference === "any" ? null : edit.value.property_preference,
+  };
+
+  let { error: e } = await supabase
     .from("clients")
-    .update({
-      full_name: edit.value.full_name,
-      phone: edit.value.phone || null,
-      email: edit.value.email || null,
-      notes: edit.value.notes || null,
-      min_price: edit.value.min_price ?? null,
-      max_price: edit.value.max_price ?? null,
-      min_rooms: edit.value.min_rooms ?? null,
-      max_rooms: edit.value.max_rooms ?? null,
-      preferred_tags: parseTagsInput(edit.value.preferred_tags_input),
-    })
+    .update(fullPayload)
     .eq("id", id);
+
+  const msg = String(e?.message || e || "");
+  const missingPrefCols =
+    msg.includes("deal_preference") || msg.includes("property_preference");
+  if (e && missingPrefCols) {
+    const retry = await supabase
+      .from("clients")
+      .update(basePayload)
+      .eq("id", id);
+    e = retry.error;
+  }
 
   saving.value = false;
 
