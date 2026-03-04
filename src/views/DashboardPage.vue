@@ -110,7 +110,8 @@
             <li
               v-for="h in recentHouses"
               :key="h.id"
-              class="rounded-xl border border-white/10 bg-black/30 p-4 hover:bg-white/[0.05] transition"
+              class="rounded-xl border border-white/10 bg-black/30 p-4 hover:bg-white/[0.05] transition cursor-pointer"
+              @dblclick="openHouseFromLatest(h.id)"
             >
               <div class="flex items-start justify-between gap-4">
                 <div>
@@ -140,9 +141,9 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
-        <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
+        <div v-if="settings.dashboardWidgets.calendar" class="glass-soft p-6">
           <div
-            class="mb-5 relative rounded-2xl border p-4"
+            class="relative rounded-2xl border p-4"
             style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 84%, transparent);"
           >
             <div class="flex items-start justify-between gap-3">
@@ -203,7 +204,9 @@
                   :key="`ev-${event.id}`"
                   class="rounded-md border px-2 py-1.5"
                   style="border-color: var(--shell-border-soft);"
+                  :class="event.id ? 'cursor-pointer hover:brightness-110' : ''"
                   :style="dashboardDayStyle({ active: true, events: [event] })"
+                  @dblclick="openEventInCalendar(event)"
                 >
                   <div class="font-medium">◆ {{ event.title }}</div>
                   <div v-if="event.note" class="opacity-80 mt-0.5 whitespace-pre-wrap">{{ event.note }}</div>
@@ -213,8 +216,8 @@
                   :key="`tk-${task.id}`"
                   class="rounded-md border px-2 py-1.5"
                   style="border-color: var(--shell-border-soft);"
-                  :class="task.entityId ? 'cursor-pointer hover:bg-white/[0.05]' : ''"
-                  @click="task.entityId && openTaskEntity(task)"
+                  :class="task.id ? 'cursor-pointer hover:bg-white/[0.05] hover:brightness-110' : ''"
+                  @dblclick="openTaskInCalendar(task)"
                 >
                   <div class="font-medium flex items-center gap-2">
                     <span class="h-2 w-2 rounded-full" :style="{ background: task.color || '#22c55e' }"></span>
@@ -245,8 +248,10 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <div class="mb-5">
+        <div v-if="settings.dashboardWidgets.follow_ups" class="glass-soft p-6">
+          <div>
             <div class="flex items-center justify-between">
               <h2 class="font-semibold">{{ t.follow_ups }}</h2>
               <span class="text-xs text-white/50">{{ taskSummary.totalOpen }} {{ t.open }}</span>
@@ -293,7 +298,9 @@
             </div>
             <div v-else class="mt-3 text-xs text-white/45">{{ t.no_follow_ups_yet }}</div>
           </div>
+        </div>
 
+        <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
           <h2 class="font-semibold mb-3">{{ t.recent_activity }}</h2>
           <ul class="space-y-2 text-sm text-white/60">
             <li v-for="a in activity" :key="a.id" class="flex items-center justify-between gap-3">
@@ -890,6 +897,31 @@ const openTaskEntity = (task) => {
   if (task.entityType === "client") {
     router.push(`/clients/${task.entityId}`);
   }
+};
+
+const openTaskInCalendar = (task) => {
+  if (!task?.id) return;
+  const query = {
+    deadlineId: String(task.id),
+  };
+  const dateKey = task?.dueDate || dashboardSelectedDate.value;
+  if (dateKey) query.date = dateKey;
+  router.push({ path: "/calendar", query });
+};
+
+const openEventInCalendar = (event) => {
+  if (!event?.id) return;
+  const query = {
+    eventId: String(event.id),
+  };
+  const dateKey = dashboardSelectedDate.value || event?.date || "";
+  if (dateKey) query.date = dateKey;
+  router.push({ path: "/calendar", query });
+};
+
+const openHouseFromLatest = (houseId) => {
+  if (!houseId) return;
+  router.push(`/houses/${houseId}`);
 };
 
 const formatTaskCount = (count) => {

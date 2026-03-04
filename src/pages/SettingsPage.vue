@@ -127,6 +127,14 @@ useTopbarActions(() => []);
             <input type="checkbox" v-model="settings.dashboardWidgets.latest_listings" />
           </label>
           <label class="flex items-center justify-between text-sm">
+            <span>{{ t.widget_calendar }}</span>
+            <input type="checkbox" v-model="settings.dashboardWidgets.calendar" />
+          </label>
+          <label class="flex items-center justify-between text-sm">
+            <span>{{ t.widget_follow_ups }}</span>
+            <input type="checkbox" v-model="settings.dashboardWidgets.follow_ups" />
+          </label>
+          <label class="flex items-center justify-between text-sm">
             <span>{{ t.widget_recent_clients }}</span>
             <input type="checkbox" v-model="settings.dashboardWidgets.recent_clients" />
           </label>

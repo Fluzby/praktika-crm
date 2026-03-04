@@ -50,6 +50,9 @@
               <div class="shell-page-title truncate">
                 {{ pageMeta.title }}
               </div>
+              <div v-if="pageShortcutHint" class="text-[11px] leading-tight mt-0.5" style="color: var(--shell-text-muted);">
+                {{ pageShortcutHint }}
+              </div>
             </div>
           </div>
 
@@ -359,6 +362,17 @@ const openFirstSearchResult = () => {
 
 const onWindowKeydown = (e) => {
   if (settings.shortcuts && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    if (!isTypingContext(e.target) && e.key === "Escape") {
+      if (searchOpen.value) {
+        e.preventDefault();
+        closeSearch();
+        return;
+      }
+      e.preventDefault();
+      router.back();
+      return;
+    }
+
     if (!isTypingContext(e.target) && /^[1-6]$/.test(e.key)) {
       const tabIndex = Number(e.key) - 1;
       const nextPath = MAIN_TAB_SHORTCUT_PATHS[tabIndex];
@@ -413,5 +427,19 @@ const pageMeta = computed(() => {
   }
 
   return { section: t.value.workspace, title: "CRM", detail: "" };
+});
+
+const pageShortcutHint = computed(() => {
+  const path = route.path;
+  if (path === "/houses" || path === "/clients") {
+    return "E: Select • Enter: Exit select";
+  }
+  if (path.startsWith("/houses/")) {
+    return "E: Edit • Enter: Save • R: Refresh";
+  }
+  if (path.startsWith("/clients/")) {
+    return "Enter: Save";
+  }
+  return "";
 });
 </script>

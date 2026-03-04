@@ -22,7 +22,20 @@
             <option value="sale">{{ t.property_deal_sale }}</option>
             <option value="rent">{{ t.property_deal_rent }}</option>
           </select>
-          <button class="btn-ghost" @click="q = ''" :disabled="!q">{{ t.clear }}</button>
+          <select class="input w-[170px]" v-model="availabilityKind">
+            <option value="all">{{ t.property_type_all }}</option>
+            <option value="entering">{{ t.availability_entering }}</option>
+            <option value="available">{{ t.availability_available }}</option>
+            <option value="unavailable">{{ t.availability_unavailable }}</option>
+          </select>
+          <select class="input w-[200px]" v-model="sortBy">
+            <option value="default">{{ t.sort_default }}</option>
+            <option value="name_asc">{{ t.sort_name_az }}</option>
+            <option value="name_desc">{{ t.sort_name_za }}</option>
+            <option value="price_desc">{{ t.sort_price_high_low }}</option>
+            <option value="price_asc">{{ t.sort_price_low_high }}</option>
+          </select>
+          <button class="btn-ghost" @click="resetFilters" :disabled="!hasActiveFilters">{{ t.clear }}</button>
           <div class="text-sm text-white/50">
             {{ filtered.length }} {{ t.results }}
           </div>
@@ -37,7 +50,7 @@
 
       <div v-else class="glass-soft overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[1180px] text-sm">
+          <table class="w-full min-w-[1180px] text-sm" :class="selectionMode ? 'select-none' : ''">
             <thead class="bg-white/[0.02] border-b border-white/10">
               <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
                 <th v-if="selectionMode" class="px-4 py-3 font-medium w-10">
@@ -63,6 +76,7 @@
                 v-for="(h, index) in filtered"
                 :key="h.id"
                 class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer align-top"
+                @mousedown="selectionMode && $event.shiftKey && $event.preventDefault()"
                 @click="selectionMode ? onHouseSelectInteraction(h.id, index, $event) : openHouse(h.id)"
               >
                 <td v-if="selectionMode" class="px-4 py-3" @click.stop>
@@ -87,7 +101,7 @@
                       v-model="h.availability"
                       @focus="h._prevAvailability = h.availability || 'entering'"
                       @click.stop
-                      @change.stop="updateAvailability(h)"
+                      @change.stop="stageAvailabilityChange(h)"
                       :disabled="savingAvailability[h.id]"
                     >
                       <option value="entering">{{ t.availability_entering }}</option>
@@ -345,12 +359,14 @@ const q = ref("");
 const showAdd = ref(false);
 const propertyKind = ref("all");
 const dealKind = ref("all");
+const availabilityKind = ref("all");
+const sortBy = ref("default");
 const selectionMode = ref(false);
 const selectedHouseIds = ref([]);
 const bulkAvailability = ref("available");
 const bulkBusy = ref(false);
 const lastHouseSelectionIndex = ref(null);
-const lastAvailabilityChange = ref(null);
+const availabilityDrafts = ref({});
 
 const creating = ref(false);
 const createError = ref("");
@@ -372,6 +388,22 @@ const fieldLabel = (field) => (settings.lang === "et" ? (field.label_et || field
 
 const onFilesChange = (e) => {
   selectedFiles.value = Array.from(e.target.files || []).slice(0, 10);
+};
+
+const hasActiveFilters = computed(() =>
+  q.value.trim().length > 0
+  || propertyKind.value !== "all"
+  || dealKind.value !== "all"
+  || availabilityKind.value !== "all"
+  || sortBy.value !== "default"
+);
+
+const resetFilters = () => {
+  q.value = "";
+  propertyKind.value = "all";
+  dealKind.value = "all";
+  availabilityKind.value = "all";
+  sortBy.value = "default";
 };
 
 const filteredGroups = computed(() => {
@@ -477,29 +509,112 @@ const availabilityLabel = (a) => {
 };
 
 const savingAvailability = ref({});
+const pendingAvailabilityCount = computed(() => Object.keys(availabilityDrafts.value).length);
 
-const updateAvailability = async (h) => {
+const stageAvailabilityChange = (h) => {
   const next = h.availability || "entering";
   const prev = h._prevAvailability || "entering";
-  savingAvailability.value = { ...savingAvailability.value, [h.id]: true };
 
+  if (
+    selectionMode.value &&
+    selectedHouseIds.value.length > 1 &&
+    selectedHouseIdSet.value.has(h.id)
+  ) {
+    // In multi-select, changing one selected row's availability applies to all selected rows.
+    applyAvailabilityToSelected(next);
+    return;
+  }
+
+  if (next === prev) {
+    const { [h.id]: _remove, ...rest } = availabilityDrafts.value;
+    availabilityDrafts.value = rest;
+    return;
+  }
+  availabilityDrafts.value = { ...availabilityDrafts.value, [h.id]: next };
+};
+
+const applyAvailabilityToSelected = (nextAvailability) => {
+  if (!selectedHouseIds.value.length) return;
+  const nextDrafts = { ...availabilityDrafts.value };
+  for (const id of selectedHouseIds.value) {
+    const row = houses.value.find((h) => h.id === id);
+    if (!row) continue;
+    row.availability = nextAvailability;
+    const prev = row._prevAvailability || "entering";
+    if (nextAvailability === prev) {
+      delete nextDrafts[id];
+    } else {
+      nextDrafts[id] = nextAvailability;
+    }
+  }
+  availabilityDrafts.value = nextDrafts;
+};
+
+const saveAvailabilityChanges = async () => {
+  const entries = Object.entries(availabilityDrafts.value);
+  if (!entries.length) return;
+  bulkBusy.value = true;
+  error.value = "";
   try {
-    const { error: e } = await supabase
-      .from("houses")
-      .update({ availability: next })
-      .eq("id", h.id);
-    if (e) throw e;
-    h._prevAvailability = next;
+    for (const [id, availability] of entries) {
+      savingAvailability.value = { ...savingAvailability.value, [id]: true };
+      const { error: e } = await supabase
+        .from("houses")
+        .update({ availability })
+        .eq("id", id);
+      if (e) throw e;
+      const row = houses.value.find((h) => h.id === id);
+      if (row) row._prevAvailability = availability;
+      savingAvailability.value = { ...savingAvailability.value, [id]: false };
+    }
+    availabilityDrafts.value = {};
+    if (selectionMode.value) {
+      selectionMode.value = false;
+      selectedHouseIds.value = [];
+      lastHouseSelectionIndex.value = null;
+    }
   } catch (e) {
     error.value = e?.message || String(e);
-    h.availability = prev;
-    h._prevAvailability = prev;
+    for (const [id] of entries) {
+      const row = houses.value.find((h) => h.id === id);
+      if (!row) continue;
+      row.availability = row._prevAvailability || "entering";
+      savingAvailability.value = { ...savingAvailability.value, [id]: false };
+    }
   } finally {
-    savingAvailability.value = { ...savingAvailability.value, [h.id]: false };
+    bulkBusy.value = false;
   }
 };
 
 const openHouse = (id) => router.push(`/houses/${id}`);
+
+const isTypingContext = (target) => {
+  if (!(target instanceof Element)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return !!target.closest('[contenteditable="true"]');
+};
+
+const onKeydown = (e) => {
+  if (!settings.shortcuts) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  if (isTypingContext(e.target)) return;
+  if (e.key === "Enter" && pendingAvailabilityCount.value > 0) {
+    e.preventDefault();
+    void saveAvailabilityChanges();
+    return;
+  }
+  if (e.key === "Enter" && selectionMode.value) {
+    e.preventDefault();
+    toggleSelectionMode();
+    return;
+  }
+  if (e.key !== "e" && e.key !== "E") return;
+  if (showAdd.value || bulkBusy.value) return;
+  e.preventDefault();
+  toggleSelectionMode();
+};
 
 const onArchiveHouse = async (houseRow) => {
   try {
@@ -531,21 +646,38 @@ const filtered = computed(() => {
   if (dealKind.value !== "all") {
     rows = rows.filter((h) => classifyDealType(h) === dealKind.value);
   }
+  if (availabilityKind.value !== "all") {
+    rows = rows.filter((h) => (h.availability || "entering") === availabilityKind.value);
+  }
 
-  if (!term) return rows;
+  if (term) {
+    rows = rows.filter((h) => {
+      const haystack = [
+        h.address,
+        h.city,
+        ...(normalizeTagList(h.tags) || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-  return rows.filter((h) => {
-    const haystack = [
-      h.address,
-      h.city,
-      ...(normalizeTagList(h.tags) || []),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+      return haystack.includes(term);
+    });
+  }
 
-    return haystack.includes(term);
-  });
+  if (sortBy.value === "name_asc") {
+    return [...rows].sort((a, b) => String(a.address || "").localeCompare(String(b.address || ""), undefined, { sensitivity: "base" }));
+  }
+  if (sortBy.value === "name_desc") {
+    return [...rows].sort((a, b) => String(b.address || "").localeCompare(String(a.address || ""), undefined, { sensitivity: "base" }));
+  }
+  if (sortBy.value === "price_desc") {
+    return [...rows].sort((a, b) => Number(b.price ?? -Infinity) - Number(a.price ?? -Infinity));
+  }
+  if (sortBy.value === "price_asc") {
+    return [...rows].sort((a, b) => Number(a.price ?? Infinity) - Number(b.price ?? Infinity));
+  }
+  return rows;
 });
 
 const selectedHouseIdSet = computed(() => new Set(selectedHouseIds.value));
@@ -608,61 +740,7 @@ function toggleSelectionMode() {
 }
 
 async function bulkUpdateAvailability(nextAvailability) {
-  if (!selectedHouseIds.value.length) return;
-  const targetIds = [...selectedHouseIds.value];
-  const prevRows = targetIds.map((id) => {
-    const row = houses.value.find((h) => h.id === id);
-    return { id, availability: row?.availability || "entering" };
-  });
-  const changedRows = prevRows.filter((row) => row.availability !== (nextAvailability || "entering"));
-
-  bulkBusy.value = true;
-  error.value = "";
-  try {
-    const { error: e } = await supabase
-      .from("houses")
-      .update({ availability: nextAvailability || "entering" })
-      .in("id", targetIds);
-    if (e) throw e;
-    await load();
-    lastAvailabilityChange.value = changedRows.length ? { rows: changedRows } : null;
-    selectedHouseIds.value = [];
-  } catch (e) {
-    error.value = e?.message || String(e);
-  } finally {
-    bulkBusy.value = false;
-  }
-}
-
-async function undoLastAvailabilityChange() {
-  const rows = lastAvailabilityChange.value?.rows || [];
-  if (!rows.length) return;
-
-  const byAvailability = new Map();
-  for (const row of rows) {
-    const key = row.availability || "entering";
-    const ids = byAvailability.get(key) || [];
-    ids.push(row.id);
-    byAvailability.set(key, ids);
-  }
-
-  bulkBusy.value = true;
-  error.value = "";
-  try {
-    for (const [availability, ids] of byAvailability.entries()) {
-      const { error: e } = await supabase
-        .from("houses")
-        .update({ availability })
-        .in("id", ids);
-      if (e) throw e;
-    }
-    await load();
-    lastAvailabilityChange.value = null;
-  } catch (e) {
-    error.value = e?.message || String(e);
-  } finally {
-    bulkBusy.value = false;
-  }
+  applyAvailabilityToSelected(nextAvailability || "entering");
 }
 
 async function bulkArchiveHouses() {
@@ -706,14 +784,23 @@ async function bulkDeleteHouses() {
 
 useTopbarActions(() => {
   if (!selectionMode.value) {
-    return [
+    const actions = [
       { key: "refresh", label: t.value.refresh, onClick: () => load(), disabled: loading.value || bulkBusy.value },
       { key: "add", label: `+ ${t.value.add}`, onClick: () => (showAdd.value = true), disabled: bulkBusy.value },
       { key: "select-mode", label: t.value.select_mode, onClick: toggleSelectionMode },
     ];
+    if (pendingAvailabilityCount.value > 0) {
+      actions.splice(1, 0, {
+        key: "save-availability",
+        label: `${t.value.save} (${pendingAvailabilityCount.value})`,
+        onClick: saveAvailabilityChanges,
+        disabled: bulkBusy.value,
+      });
+    }
+    return actions;
   }
 
-  return [
+  const actions = [
     {
       key: "select-visible",
       label: allVisibleHousesSelected.value ? t.value.clear_selection : t.value.select_all_visible,
@@ -730,10 +817,10 @@ useTopbarActions(() => {
       key: "bulk-availability-select",
       type: "select",
       value: bulkAvailability.value,
-      onChange: async (v) => {
+      onChange: (v) => {
         bulkAvailability.value = v;
         if (!selectedHouseIds.value.length || bulkBusy.value) return;
-        await bulkUpdateAvailability(v);
+        bulkUpdateAvailability(v);
       },
       disabled: !selectedHouseIds.value.length || bulkBusy.value,
       options: [
@@ -742,14 +829,17 @@ useTopbarActions(() => {
         { value: "unavailable", label: t.value.availability_unavailable },
       ],
     },
-    {
-      key: "undo-bulk-availability",
-      label: t.value.undo,
-      onClick: undoLastAvailabilityChange,
-      disabled: bulkBusy.value || !(lastAvailabilityChange.value?.rows?.length > 0),
-    },
     { key: "exit-select-mode", label: t.value.exit_select_mode, onClick: toggleSelectionMode, disabled: bulkBusy.value },
   ];
+  if (pendingAvailabilityCount.value > 0) {
+    actions.splice(actions.length - 1, 0, {
+      key: "save-availability",
+      label: `${t.value.save} (${pendingAvailabilityCount.value})`,
+      onClick: saveAvailabilityChanges,
+      disabled: bulkBusy.value,
+    });
+  }
+  return actions;
 });
 
 const APARTMENT_TOKENS = [
@@ -827,7 +917,10 @@ async function load() {
 
     if (e) throw e;
 
-    houses.value = data || [];
+    houses.value = (data || []).map((h) => ({
+      ...h,
+      _prevAvailability: h.availability || "entering",
+    }));
     const liveIds = new Set(houses.value.map((h) => h.id));
     selectedHouseIds.value = selectedHouseIds.value.filter((id) => liveIds.has(id));
   } catch (err) {
@@ -907,4 +1000,8 @@ const createHouseAndClose = async () => {
 };
 
 onMounted(load);
+onMounted(() => {
+  window.addEventListener("keydown", onKeydown);
+  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+});
 </script>

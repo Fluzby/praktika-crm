@@ -395,8 +395,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { useT } from "../lib/i18n";
 import {
@@ -418,6 +418,7 @@ const EVENT_TYPE_OPTIONS = computed(() => [
   { value: "call", label: t.value.call },
   { value: "deadline", label: t.value.deadline },
 ]);
+const route = useRoute();
 const router = useRouter();
 
 const now = new Date();
@@ -968,6 +969,7 @@ async function loadDeadlinesForMonth() {
     .select("id,title,notes,due_at,status,entity_type,entity_id")
     .gte("due_at", monthStart.toISOString())
     .lte("due_at", monthEnd.toISOString())
+    .neq("status", "done")
     .neq("status", "cancelled")
     .order("due_at", { ascending: true });
 
@@ -1137,6 +1139,48 @@ function openLinkedDeadlineRecord() {
   }
 }
 
+async function openFromRouteQuery() {
+  const rawDate = String(route.query.date || "").slice(0, 10);
+  const targetDate = isValidDateKey(rawDate) ? rawDate : "";
+  const deadlineId = String(route.query.deadlineId || "").trim();
+  const eventId = String(route.query.eventId || "").trim();
+
+  if (!targetDate && !deadlineId && !eventId) return;
+
+  if (targetDate) {
+    const { yyyy, mm } = parseDateParts(targetDate);
+    if (yyyy && mm) {
+      viewYear.value = yyyy;
+      viewMonth.value = mm - 1;
+      selectDate(targetDate);
+    }
+  }
+
+  await loadDeadlinesForMonth();
+  await nextTick();
+
+  if (eventId) {
+    const matchedEvent = events.value.find((event) => String(event.id) === eventId);
+    if (matchedEvent) {
+      if (targetDate) selectDate(targetDate);
+      openEventDetails(matchedEvent);
+      return;
+    }
+  }
+
+  if (deadlineId) {
+    const dateToCheck = targetDate || selectedDate.value;
+    const matchedDeadline = (deadlinesByDate.value[dateToCheck] || []).find((deadline) => String(deadline.id) === deadlineId);
+    if (matchedDeadline) {
+      selectDate(dateToCheck);
+      openDeadlineDetails(matchedDeadline);
+      return;
+    }
+  }
+
+  if (targetDate) selectDate(targetDate, true);
+}
+
 watch([viewYear, viewMonth], () => {
   const firstDate = `${viewYear.value}-${String(viewMonth.value + 1).padStart(2, "0")}-01`;
   if (!selectedDate.value.startsWith(firstDate.slice(0, 7))) {
@@ -1152,6 +1196,13 @@ watch(events, () => {
     selectedCalendarItem.value = null;
   }
 }, { deep: true });
+
+watch(
+  () => [route.query.date, route.query.deadlineId, route.query.eventId],
+  () => {
+    void openFromRouteQuery();
+  }
+);
 
 async function loadEventLinkOptions() {
   try {
@@ -1170,7 +1221,8 @@ onMounted(async () => {
   if (!eventColor.value) eventColor.value = CALENDAR_COLOR_PRESETS[0];
   eventColor.value = normalizeHexColor(eventColor.value);
   await loadEventsFromDbWithLocalMigration();
-  loadDeadlinesForMonth();
-  loadEventLinkOptions();
+  await loadDeadlinesForMonth();
+  await loadEventLinkOptions();
+  await openFromRouteQuery();
 });
 </script>

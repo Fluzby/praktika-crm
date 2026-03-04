@@ -27,7 +27,7 @@
 
       <div v-else class="glass-soft overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[860px] text-sm">
+          <table class="w-full min-w-[860px] text-sm" :class="selectionMode ? 'select-none' : ''">
             <thead class="bg-white/[0.02] border-b border-white/10">
               <tr class="text-left text-xs uppercase tracking-[0.08em] text-white/50">
                 <th v-if="selectionMode" class="px-4 py-3 font-medium w-10">
@@ -50,6 +50,7 @@
                 v-for="(c, index) in filtered"
                 :key="c.id"
                 class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer"
+                @mousedown="selectionMode && $event.shiftKey && $event.preventDefault()"
                 @click="selectionMode ? onClientSelectInteraction(c.id, index, $event) : openClient(c.id)"
               >
                 <td v-if="selectionMode" class="px-4 py-3" @click.stop>
@@ -174,7 +175,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
@@ -256,6 +257,29 @@ const formatDate = (iso) => {
 };
 
 const openClient = (id) => router.push(`/clients/${id}`);
+
+const isTypingContext = (target) => {
+  if (!(target instanceof Element)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return !!target.closest('[contenteditable="true"]');
+};
+
+const onKeydown = (e) => {
+  if (!settings.shortcuts) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  if (isTypingContext(e.target)) return;
+  if (e.key === "Enter" && selectionMode.value) {
+    e.preventDefault();
+    toggleSelectionMode();
+    return;
+  }
+  if (e.key !== "e" && e.key !== "E") return;
+  if (showAdd.value || bulkBusy.value) return;
+  e.preventDefault();
+  toggleSelectionMode();
+};
 
 const onArchiveClient = async (clientRow) => {
   try {
@@ -514,4 +538,8 @@ const createClientAndClose = async () => {
 };
 
 onMounted(load);
+onMounted(() => {
+  window.addEventListener("keydown", onKeydown);
+  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+});
 </script>

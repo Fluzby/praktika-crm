@@ -80,6 +80,7 @@ export async function loadTaskCalendarSummary() {
   const { data, error } = await supabase
     .from("tasks")
     .select("*")
+    .neq("status", "done")
     .neq("status", "cancelled")
     .order("due_at", { ascending: true, nullsFirst: false })
     .limit(200);
@@ -92,10 +93,10 @@ export async function loadTaskCalendarSummary() {
   }
   const todayStr = toLocalDateKey(new Date());
   return {
-    overdue: tasks.filter((t) => t.status !== "done" && t.due_at && t.due_at.slice(0, 10) < todayStr).length,
-    today: tasks.filter((t) => t.status !== "done" && t.due_at && t.due_at.slice(0, 10) === todayStr).length,
-    upcoming: tasks.filter((t) => t.status !== "done" && (!t.due_at || t.due_at.slice(0, 10) > todayStr)).length,
-    totalOpen: tasks.filter((t) => t.status !== "done").length,
+    overdue: tasks.filter((t) => t.due_at && t.due_at.slice(0, 10) < todayStr).length,
+    today: tasks.filter((t) => t.due_at && t.due_at.slice(0, 10) === todayStr).length,
+    upcoming: tasks.filter((t) => !t.due_at || t.due_at.slice(0, 10) > todayStr).length,
+    totalOpen: tasks.length,
     recent: tasks.slice(0, 8).map((t) => ({
       id: t.id,
       title: t.title,
@@ -107,18 +108,16 @@ export async function loadTaskCalendarSummary() {
       entityId: t.entity_id,
       status: t.status,
     })),
-    items: tasks
-      .filter((t) => t.status !== "cancelled")
-      .map((t) => ({
-        id: t.id,
-        title: t.title,
-        note: t.notes || "",
-        type: t.task_type || "follow_up",
-        color: t.color || "#22c55e",
-        dueDate: t.due_at ? t.due_at.slice(0, 10) : "",
-        status: t.status,
-        entityType: t.entity_type,
-        entityId: t.entity_id,
-      })),
+    items: tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      note: t.notes || "",
+      type: t.task_type || "follow_up",
+      color: t.color || "#22c55e",
+      dueDate: t.due_at ? t.due_at.slice(0, 10) : "",
+      status: t.status,
+      entityType: t.entity_type,
+      entityId: t.entity_id,
+    })),
   };
 }

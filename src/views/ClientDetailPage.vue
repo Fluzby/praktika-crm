@@ -835,6 +835,28 @@ const remove = async () => {
   router.push("/clients");
 };
 
+const isTypingContext = (target) => {
+  if (!(target instanceof Element)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return !!target.closest('[contenteditable="true"]');
+};
+
+const onKeydown = (e) => {
+  if (!settings.shortcuts) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key !== "Enter") return;
+  if (saving.value) return;
+
+  const tag = e.target instanceof Element ? e.target.tagName : "";
+  if (tag === "TEXTAREA") return;
+  if (isTypingContext(e.target)) {
+    e.preventDefault();
+    save();
+  }
+};
+
 onMounted(async () => {
   await load();
   await loadMatched();
@@ -854,5 +876,8 @@ onMounted(async () => {
   };
   window.addEventListener("match-changed", handler);
   onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
+
+  window.addEventListener("keydown", onKeydown);
+  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 });
 </script>

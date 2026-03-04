@@ -1084,6 +1084,16 @@ const isTypingContext = (target) => {
 const onKeydown = (e) => {
   if (!settings.shortcuts) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.key === "Enter" && isEditing.value && !saving.value && !savingCover.value) {
+    const tag = e.target instanceof Element ? e.target.tagName : "";
+    if (tag !== "TEXTAREA") {
+      e.preventDefault();
+      saveHouse();
+      return;
+    }
+  }
+
   if (isTypingContext(e.target)) return;
 
   if (e.key === "e" || e.key === "E") {

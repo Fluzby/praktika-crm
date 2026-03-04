@@ -11,6 +11,8 @@ const DEFAULTS = {
     overview: true,
     house_availability: true,
     latest_listings: true,
+    calendar: true,
+    follow_ups: true,
     recent_clients: true,
     recent_activity: true,
   },
