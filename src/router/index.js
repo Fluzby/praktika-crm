@@ -12,8 +12,26 @@ import SettingsPage from "../pages/SettingsPage.vue";
 import { supabase } from "../lib/supabase";
 
 const requireAuth = async () => {
-  const { data } = await supabase.auth.getSession();
-  return !!data.session;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      const message = (error.message || "").toLowerCase();
+      if (message.includes("refresh token")) {
+        // Local sign-out clears stale tokens that can cause repeated refresh failures.
+        await supabase.auth.signOut({ scope: "local" });
+      }
+      return false;
+    }
+
+    return !!data.session;
+  } catch (error) {
+    const message = (error?.message || "").toLowerCase();
+    if (message.includes("refresh token")) {
+      await supabase.auth.signOut({ scope: "local" });
+    }
+    return false;
+  }
 };
 
 const routes = [
