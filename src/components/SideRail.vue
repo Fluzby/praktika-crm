@@ -12,6 +12,8 @@
     <nav class="shell-nav-list" aria-label="Primary">
       <NavIcon
         to="/dashboard"
+        :icon-src="iconFor('dashboard')"
+        :force-white="useLightIcons"
         icon="▦"
         :label="t.dashboard"
         :collapsed="collapsed"
@@ -19,6 +21,8 @@
       />
       <NavIcon
         to="/houses"
+        :icon-src="iconFor('property')"
+        :force-white="useLightIcons"
         icon="⌂"
         :label="t.houses"
         :collapsed="collapsed"
@@ -26,6 +30,8 @@
       />
       <NavIcon
         to="/clients"
+        :icon-src="iconFor('clients')"
+        :force-white="useLightIcons"
         icon="◍"
         :label="t.clients"
         :collapsed="collapsed"
@@ -33,6 +39,8 @@
       />
       <NavIcon
         to="/calendar"
+        :icon-src="iconFor('calendar')"
+        :force-white="useLightIcons"
         icon="◷"
         :label="t.calendar"
         :collapsed="collapsed"
@@ -40,6 +48,8 @@
       />
       <NavIcon
         to="/archive"
+        :icon-src="iconFor('archive')"
+        :force-white="useLightIcons"
         icon="🗄"
         :label="t.archive"
         :collapsed="collapsed"
@@ -47,6 +57,9 @@
       />
       <NavIcon
         to="/settings"
+        :icon-src="iconFor('settings')"
+        :force-white="useLightIcons"
+        :zoom="true"
         icon="⚙"
         :label="t.settings"
         :collapsed="collapsed"
@@ -96,6 +109,19 @@ import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import NavIcon from "./SideRailIcon.vue";
 import { useT } from "../lib/i18n";
+import { settings } from "../lib/settings";
+
+const dashboardWhite = new URL("../../Images/dashboard_white.png", import.meta.url).href;
+const dashboardBlack = new URL("../../Images/dashboard_black.png", import.meta.url).href;
+const propertyWhite = new URL("../../Images/property_white.png", import.meta.url).href;
+const propertyBlack = new URL("../../Images/property_black.png", import.meta.url).href;
+const clientsWhite = new URL("../../Images/clients_white.png", import.meta.url).href;
+const clientsBlack = new URL("../../Images/clients_black.png", import.meta.url).href;
+const calendarWhite = new URL("../../Images/calendar_white.png", import.meta.url).href;
+const calendarBlack = new URL("../../Images/calendar_black.png", import.meta.url).href;
+const archiveWhite = new URL("../../Images/archive_white.png", import.meta.url).href;
+const archiveBlack = new URL("../../Images/archive_black.png", import.meta.url).href;
+const settingsBlack = new URL("../../Images/gearsettings.png", import.meta.url).href;
 
 defineProps({
   collapsed: { type: Boolean, default: false },
@@ -108,6 +134,17 @@ const t = useT();
 const userName = ref("");
 const userEmail = ref("");
 let authSubscription = null;
+const darkSurfaceThemes = new Set(["dark", "glass", "warm", "brutalist"]);
+const useLightIcons = computed(() => darkSurfaceThemes.has(settings.theme || "dark"));
+
+const iconMap = {
+  dashboard: { light: dashboardBlack, dark: dashboardWhite },
+  property: { light: propertyBlack, dark: propertyWhite },
+  clients: { light: clientsBlack, dark: clientsWhite },
+  calendar: { light: calendarBlack, dark: calendarWhite },
+  archive: { light: archiveBlack, dark: archiveWhite },
+  settings: { light: settingsBlack, dark: settingsBlack },
+};
 
 const userDisplayName = computed(() => {
   if (userName.value) return userName.value;
@@ -124,6 +161,12 @@ const userInitial = computed(() => (userDisplayName.value || "A").charAt(0).toUp
 
 const handleNavigate = () => {
   emit("navigate");
+};
+
+const iconFor = (name) => {
+  const icons = iconMap[name];
+  if (!icons) return "";
+  return useLightIcons.value ? icons.light : icons.dark;
 };
 
 const setUserFromAuth = (user) => {

@@ -7,7 +7,14 @@
     @click="$emit('click')"
   >
     <span class="shell-nav-item-icon" aria-hidden="true">
-      <slot>{{ icon }}</slot>
+      <img
+        v-if="iconSrc"
+        class="shell-nav-item-icon-img"
+        :class="{ 'is-force-white': forceWhite, 'is-zoomed': zoom }"
+        :src="iconSrc"
+        :alt="label"
+      />
+      <slot v-else>{{ icon }}</slot>
     </span>
     <span v-if="!collapsed" class="shell-nav-item-label">{{ label }}</span>
   </RouterLink>
@@ -19,6 +26,9 @@ import { RouterLink } from "vue-router";
 defineProps({
   to: { type: String, required: true },
   icon: { type: String, default: "" },
+  iconSrc: { type: String, default: "" },
+  forceWhite: { type: Boolean, default: false },
+  zoom: { type: Boolean, default: false },
   label: { type: String, default: "" },
   collapsed: { type: Boolean, default: false },
 });
@@ -71,6 +81,22 @@ defineEmits(["click"]);
   font-size: 0.95rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.shell-nav-item-icon-img {
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
+  display: block;
+}
+
+.shell-nav-item-icon-img.is-force-white {
+  filter: brightness(0) invert(1);
+}
+
+.shell-nav-item-icon-img.is-zoomed {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .shell-nav-item-active {
