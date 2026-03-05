@@ -49,7 +49,9 @@
               <tr
                 v-for="(c, index) in filtered"
                 :key="c.id"
+                :data-kb-index="index"
                 class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer"
+                :class="settings.proKeyboardMode && keyboardIndex === index ? 'bg-white/[0.07]' : ''"
                 @mousedown="selectionMode && $event.shiftKey && $event.preventDefault()"
                 @click="selectionMode ? onClientSelectInteraction(c.id, index, $event) : openClient(c.id)"
               >
@@ -101,7 +103,7 @@
       <form class="grid gap-3 md:grid-cols-2" @submit.prevent="createClientAndClose">
         <div class="md:col-span-2">
           <label class="text-sm text-white/60">{{ t.full_name }} *</label>
-          <input class="input mt-1" v-model.trim="form.full_name" required />
+          <input ref="fullNameInputEl" class="input mt-1" v-model.trim="form.full_name" required />
         </div>
 
         <div>
@@ -111,7 +113,7 @@
 
         <div>
           <label class="text-sm text-white/60">{{ t.email }}</label>
-          <input class="input mt-1" type="email" v-model.trim="form.email" />
+          <input ref="emailInputEl" class="input mt-1" type="email" v-model.trim="form.email" />
         </div>
 
         <div>
@@ -175,7 +177,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
@@ -184,6 +186,7 @@ import RowActionsMenu from "../components/RowActionsMenu.vue";
 import { useT } from "../lib/i18n";
 import { archiveEntity } from "../lib/entityActions";
 import { useTopbarActions } from "../lib/topbarActions";
+import { settings } from "../lib/settings";
 
 const router = useRouter();
 
@@ -207,6 +210,10 @@ const housesError = ref("");
 const creating = ref(false);
 const createError = ref("");
 const createOk = ref(false);
+const keyboardIndex = ref(-1);
+const fullNameInputEl = ref(null);
+const emailInputEl = ref(null);
+const pendingFocusField = ref("full_name");
 
 const form = ref({
   full_name: "",
@@ -242,6 +249,14 @@ watch(showAdd, (open) => {
   if (!open) return;
   alreadyInterested.value = false;
   interestedHouseId.value = "";
+  nextTick(() => {
+    if (pendingFocusField.value === "email") {
+      emailInputEl.value?.focus?.();
+    } else {
+      fullNameInputEl.value?.focus?.();
+    }
+    pendingFocusField.value = "full_name";
+  });
 });
 
 watch(alreadyInterested, (v) => {
@@ -267,6 +282,44 @@ const isTypingContext = (target) => {
 };
 
 const onKeydown = (e) => {
+  if (settings.proKeyboardMode && !isTypingContext(e.target) && !showAdd.value) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      if (!selectionMode.value) toggleSelectionMode();
+      toggleSelectAllVisibleClients();
+      return;
+    }
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!filtered.value.length) return;
+        keyboardIndex.value = Math.min(
+          filtered.value.length - 1,
+          keyboardIndex.value < 0 ? 0 : keyboardIndex.value + 1
+        );
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!filtered.value.length) return;
+        keyboardIndex.value = Math.max(0, keyboardIndex.value < 0 ? 0 : keyboardIndex.value - 1);
+        return;
+      }
+      if (e.key === " " && keyboardIndex.value >= 0 && keyboardIndex.value < filtered.value.length) {
+        e.preventDefault();
+        const row = filtered.value[keyboardIndex.value];
+        if (!selectionMode.value) toggleSelectionMode();
+        onClientSelectInteraction(row.id, keyboardIndex.value, { shiftKey: false });
+        return;
+      }
+      if (e.key === "Enter" && !selectionMode.value && keyboardIndex.value >= 0 && keyboardIndex.value < filtered.value.length) {
+        e.preventDefault();
+        openClient(filtered.value[keyboardIndex.value].id);
+        return;
+      }
+    }
+  }
+
   if (!settings.shortcuts) return;
   if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
   if (isTypingContext(e.target)) return;
@@ -318,6 +371,18 @@ const filtered = computed(() => {
 
     return hay.includes(term);
   });
+});
+
+watch(filtered, (rows) => {
+  if (!rows.length) {
+    keyboardIndex.value = -1;
+    return;
+  }
+  if (keyboardIndex.value < 0) {
+    keyboardIndex.value = 0;
+    return;
+  }
+  if (keyboardIndex.value >= rows.length) keyboardIndex.value = rows.length - 1;
 });
 
 const selectedClientIdSet = computed(() => new Set(selectedClientIds.value));
@@ -537,9 +602,18 @@ const createClientAndClose = async () => {
   if (!createError.value) showAdd.value = false;
 };
 
+const onNewContactShortcut = () => {
+  pendingFocusField.value = "full_name";
+  showAdd.value = true;
+};
+
 onMounted(load);
 onMounted(() => {
+  window.addEventListener("crm:shortcut:new-contact", onNewContactShortcut);
   window.addEventListener("keydown", onKeydown);
-  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+  onBeforeUnmount(() => {
+    window.removeEventListener("crm:shortcut:new-contact", onNewContactShortcut);
+    window.removeEventListener("keydown", onKeydown);
+  });
 });
 </script>

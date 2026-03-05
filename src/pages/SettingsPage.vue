@@ -96,6 +96,14 @@ useTopbarActions(() => []);
 
       <div class="flex items-center justify-between">
         <div>
+          <div class="text-sm">{{ t.pro_keyboard_mode }}</div>
+          <div class="text-xs text-white/50">{{ t.pro_keyboard_mode_help }}</div>
+        </div>
+        <input type="checkbox" v-model="settings.proKeyboardMode" />
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div>
           <div class="text-sm">{{ t.sidebar_hover_expand }}</div>
           <div class="text-xs text-white/50">{{ t.sidebar_hover_expand_help }}</div>
         </div>

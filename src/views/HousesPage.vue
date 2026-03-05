@@ -75,7 +75,9 @@
               <tr
                 v-for="(h, index) in filtered"
                 :key="h.id"
+                :data-kb-index="index"
                 class="border-b border-white/8 last:border-b-0 hover:bg-white/[0.03] cursor-pointer align-top"
+                :class="settings.proKeyboardMode && keyboardIndex === index ? 'bg-white/[0.07]' : ''"
                 @mousedown="selectionMode && $event.shiftKey && $event.preventDefault()"
                 @click="selectionMode ? onHouseSelectInteraction(h.id, index, $event) : openHouse(h.id)"
               >
@@ -176,6 +178,7 @@
           <div class="px-6 pt-4 pb-3 border-b border-white/10">
             <div class="relative">
               <input
+                ref="fieldSearchInputEl"
                 v-model="fieldSearch"
                 :placeholder="t.search_fields_placeholder"
                 class="w-full input pr-10"
@@ -337,7 +340,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
@@ -371,6 +374,8 @@ const availabilityDrafts = ref({});
 const creating = ref(false);
 const createError = ref("");
 const createOk = ref(false);
+const keyboardIndex = ref(-1);
+const fieldSearchInputEl = ref(null);
 
 const newHouse = ref({
   raw_data: {},
@@ -597,6 +602,44 @@ const isTypingContext = (target) => {
 };
 
 const onKeydown = (e) => {
+  if (settings.proKeyboardMode && !isTypingContext(e.target) && !showAdd.value) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      if (!selectionMode.value) toggleSelectionMode();
+      toggleSelectAllVisibleHouses();
+      return;
+    }
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!filtered.value.length) return;
+        keyboardIndex.value = Math.min(
+          filtered.value.length - 1,
+          keyboardIndex.value < 0 ? 0 : keyboardIndex.value + 1
+        );
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!filtered.value.length) return;
+        keyboardIndex.value = Math.max(0, keyboardIndex.value < 0 ? 0 : keyboardIndex.value - 1);
+        return;
+      }
+      if (e.key === " " && keyboardIndex.value >= 0 && keyboardIndex.value < filtered.value.length) {
+        e.preventDefault();
+        const row = filtered.value[keyboardIndex.value];
+        if (!selectionMode.value) toggleSelectionMode();
+        onHouseSelectInteraction(row.id, keyboardIndex.value, { shiftKey: false });
+        return;
+      }
+      if (e.key === "Enter" && !selectionMode.value && keyboardIndex.value >= 0 && keyboardIndex.value < filtered.value.length) {
+        e.preventDefault();
+        openHouse(filtered.value[keyboardIndex.value].id);
+        return;
+      }
+    }
+  }
+
   if (!settings.shortcuts) return;
   if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
   if (isTypingContext(e.target)) return;
@@ -678,6 +721,18 @@ const filtered = computed(() => {
     return [...rows].sort((a, b) => Number(a.price ?? Infinity) - Number(b.price ?? Infinity));
   }
   return rows;
+});
+
+watch(filtered, (rows) => {
+  if (!rows.length) {
+    keyboardIndex.value = -1;
+    return;
+  }
+  if (keyboardIndex.value < 0) {
+    keyboardIndex.value = 0;
+    return;
+  }
+  if (keyboardIndex.value >= rows.length) keyboardIndex.value = rows.length - 1;
 });
 
 const selectedHouseIdSet = computed(() => new Set(selectedHouseIds.value));
@@ -999,9 +1054,18 @@ const createHouseAndClose = async () => {
   if (!createError.value) closeAdd();
 };
 
+const onNewOpportunityShortcut = () => {
+  showAdd.value = true;
+  nextTick(() => fieldSearchInputEl.value?.focus?.());
+};
+
 onMounted(load);
 onMounted(() => {
+  window.addEventListener("crm:shortcut:new-opportunity", onNewOpportunityShortcut);
   window.addEventListener("keydown", onKeydown);
-  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+  onBeforeUnmount(() => {
+    window.removeEventListener("crm:shortcut:new-opportunity", onNewOpportunityShortcut);
+    window.removeEventListener("keydown", onKeydown);
+  });
 });
 </script>

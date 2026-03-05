@@ -536,6 +536,17 @@
     flex-shrink: 0;
   }
 
+  .shell-search-result-icon-img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    display: block;
+  }
+
+  .shell-search-result-icon-img.is-force-white {
+    filter: brightness(0) invert(1);
+  }
+
   .shell-search-result-title {
     display: block;
     color: var(--shell-text-strong);

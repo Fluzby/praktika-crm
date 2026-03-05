@@ -122,7 +122,15 @@
                   @click="goToSearchResult(item)"
                 >
                   <span class="shell-search-result-main">
-                    <span class="shell-search-result-icon">{{ item.icon }}</span>
+                    <span class="shell-search-result-icon">
+                      <img
+                        v-if="item.iconSrc"
+                        class="shell-search-result-icon-img"
+                        :class="{ 'is-force-white': searchUseLightIcons }"
+                        :src="item.iconSrc"
+                        :alt="item.label"
+                      />
+                    </span>
                     <span class="min-w-0">
                       <span class="shell-search-result-title">{{ item.label }}</span>
                       <span class="shell-search-result-sub">{{ item.section }}</span>
@@ -156,6 +164,59 @@
     </main>
 
     <BackToTopButton :target="mainEl" />
+
+    <teleport to="body">
+      <div
+        v-if="shortcutsHelpOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      >
+        <div class="absolute inset-0 modal-backdrop" @click="shortcutsHelpOpen = false"></div>
+        <div
+          class="relative modal-panel rounded-2xl w-full max-w-3xl max-h-[88vh] overflow-auto p-6"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-lg font-semibold">{{ t.keyboard_shortcuts }}</div>
+            <button class="btn-ghost text-xs" type="button" @click="shortcutsHelpOpen = false">{{ t.close }}</button>
+          </div>
+
+          <div class="space-y-4 text-sm">
+            <div class="glass-soft p-3 rounded-xl">
+              <div class="font-medium mb-2">{{ t.quick_create_shortcuts }}</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><code>C</code> - {{ t.shortcut_new_contact }}</div>
+                <div><code>P</code> - {{ t.shortcut_new_opportunity }}</div>
+                <div><code>T</code> - {{ t.shortcut_new_task }}</div>
+              </div>
+            </div>
+
+            <div class="glass-soft p-3 rounded-xl">
+              <div class="font-medium mb-2">{{ t.power_shortcuts }}</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><code>Ctrl/Cmd + K</code> - {{ t.shortcut_command_palette }}</div>
+                <div><code>/</code> - {{ t.shortcut_focus_search }}</div>
+                <div><code>Cmd/Ctrl + F</code> - {{ t.shortcut_advanced_search }}</div>
+                <div><code>Ctrl/Cmd + S</code> - {{ t.shortcut_save }}</div>
+                <div><code>Ctrl/Cmd + Enter</code> - {{ t.shortcut_submit }}</div>
+                <div><code>Esc</code> - {{ t.shortcut_close_back }}</div>
+                <div><code>?</code> - {{ t.shortcut_show_shortcuts }}</div>
+              </div>
+            </div>
+
+            <div class="glass-soft p-3 rounded-xl">
+              <div class="font-medium mb-2">{{ t.list_navigation_shortcuts }}</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><code>↑ / ↓</code> - {{ t.shortcut_move_records }}</div>
+                <div><code>Enter</code> - {{ t.shortcut_open_selected }}</div>
+                <div><code>Space</code> - {{ t.shortcut_select_record }}</div>
+                <div><code>Ctrl/Cmd + A</code> - {{ t.shortcut_select_all }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -170,6 +231,18 @@ import { topbarActions } from "../lib/topbarActions";
 import { settings } from "../lib/settings";
 import { useT } from "../lib/i18n";
 
+const dashboardWhite = new URL("../../Images/dashboard_white.png", import.meta.url).href;
+const dashboardBlack = new URL("../../Images/dashboard_black.png", import.meta.url).href;
+const propertyWhite = new URL("../../Images/property_white.png", import.meta.url).href;
+const propertyBlack = new URL("../../Images/property_black.png", import.meta.url).href;
+const clientsWhite = new URL("../../Images/clients_white.png", import.meta.url).href;
+const clientsBlack = new URL("../../Images/clients_black.png", import.meta.url).href;
+const calendarWhite = new URL("../../Images/calendar_white.png", import.meta.url).href;
+const calendarBlack = new URL("../../Images/calendar_black.png", import.meta.url).href;
+const archiveWhite = new URL("../../Images/archive_white.png", import.meta.url).href;
+const archiveBlack = new URL("../../Images/archive_black.png", import.meta.url).href;
+const settingsBlack = new URL("../../Images/gearsettings.png", import.meta.url).href;
+
 const mainEl = ref(null);
 const route = useRoute();
 const router = useRouter();
@@ -182,6 +255,7 @@ const mobileSidebarOpen = ref(false);
 const searchOpen = ref(false);
 const searchQuery = ref("");
 const searchInputEl = ref(null);
+const shortcutsHelpOpen = ref(false);
 const entitySearchLoaded = ref(false);
 const entitySearchLoading = ref(false);
 const entitySearchError = ref("");
@@ -195,6 +269,22 @@ const MAIN_TAB_SHORTCUT_PATHS = [
   "/archive",
   "/settings",
 ];
+const darkSurfaceThemes = new Set(["dark", "glass", "warm", "brutalist"]);
+const searchUseLightIcons = computed(() => darkSurfaceThemes.has(settings.theme || "dark"));
+const searchIconMap = {
+  dashboard: { light: dashboardBlack, dark: dashboardWhite },
+  property: { light: propertyBlack, dark: propertyWhite },
+  clients: { light: clientsBlack, dark: clientsWhite },
+  calendar: { light: calendarBlack, dark: calendarWhite },
+  archive: { light: archiveBlack, dark: archiveWhite },
+  settings: { light: settingsBlack, dark: settingsBlack },
+};
+
+const iconFor = (name) => {
+  const icons = searchIconMap[name];
+  if (!icons) return "";
+  return searchUseLightIcons.value ? icons.dark : icons.light;
+};
 
 const effectiveSidebarCollapsed = computed(() => {
   if (!sidebarCollapsed.value) return false;
@@ -266,15 +356,72 @@ const handleSidebarNavigate = () => {
   sidebarHoverLocked.value = true;
 };
 
+const dispatchShortcutEvent = (name, detail = {}) => {
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+};
+
+const runQuickCreate = async (kind) => {
+  const targetByKind = {
+    "new-contact": "/clients",
+    "new-opportunity": "/houses",
+    "new-task": "/calendar",
+    "new-meeting": "/calendar",
+  };
+  const eventByKind = {
+    "new-contact": "crm:shortcut:new-contact",
+    "new-opportunity": "crm:shortcut:new-opportunity",
+    "new-task": "crm:shortcut:new-task",
+    "new-meeting": "crm:shortcut:new-meeting",
+  };
+  const path = targetByKind[kind];
+  const eventName = eventByKind[kind];
+  if (!path || !eventName) return;
+  if (route.path !== path) {
+    await router.push(path);
+    await nextTick();
+  }
+  dispatchShortcutEvent(eventName);
+};
+
 const searchItems = computed(() => [
-  { key: "dashboard", label: t.value.dashboard, section: t.value.main, path: "/dashboard", icon: "▦", terms: "dashboard home overview stats widgets" },
-  { key: "houses", label: t.value.houses, section: t.value.main, path: "/houses", icon: "⌂", terms: "houses homes properties listings inventory objects" },
-  { key: "clients", label: t.value.clients, section: t.value.main, path: "/clients", icon: "◍", terms: "clients contacts people leads buyers sellers" },
-  { key: "settings", label: t.value.settings, section: t.value.main, path: "/settings", icon: "⚙", terms: "settings preferences theme language workspace config" },
-  { key: "calendar", label: t.value.calendar, section: t.value.main, path: "/calendar", icon: "◷", terms: "calendar schedule notes planner session" },
-  { key: "archive", label: t.value.archive, section: t.value.main, path: "/archive", icon: "🗄", terms: "archive archived restore deleted old records" },
-  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", icon: "◐", terms: "theme dark light glass warm brutalist plain colors mode" },
-  { key: "language", label: t.value.language_settings, section: t.value.settings, path: "/settings", icon: "⎈", terms: "language locale translation english estonian" },
+  { key: "dashboard", label: t.value.dashboard, section: t.value.main, path: "/dashboard", iconSrc: iconFor("dashboard"), terms: "dashboard home overview stats widgets" },
+  { key: "houses", label: t.value.houses, section: t.value.main, path: "/houses", iconSrc: iconFor("property"), terms: "houses homes properties listings inventory objects" },
+  { key: "clients", label: t.value.clients, section: t.value.main, path: "/clients", iconSrc: iconFor("clients"), terms: "clients contacts people leads buyers sellers" },
+  { key: "settings", label: t.value.settings, section: t.value.main, path: "/settings", iconSrc: iconFor("settings"), terms: "settings preferences theme language workspace config" },
+  { key: "calendar", label: t.value.calendar, section: t.value.main, path: "/calendar", iconSrc: iconFor("calendar"), terms: "calendar schedule notes planner session" },
+  { key: "archive", label: t.value.archive, section: t.value.main, path: "/archive", iconSrc: iconFor("archive"), terms: "archive archived restore deleted old records" },
+  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "theme dark light glass warm brutalist plain colors mode" },
+  { key: "language", label: t.value.language_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "language locale translation english estonian" },
+]);
+
+const commandItems = computed(() => [
+  {
+    key: "cmd-new-contact",
+    label: t.value.shortcut_new_contact,
+    section: t.value.actions,
+    path: "/clients",
+    iconSrc: iconFor("clients"),
+    terms: "create contact new contact lead customer",
+    action: () => runQuickCreate("new-contact"),
+  },
+  {
+    key: "cmd-new-opportunity",
+    label: t.value.shortcut_new_opportunity,
+    section: t.value.actions,
+    path: "/houses",
+    iconSrc: iconFor("property"),
+    terms: "create opportunity new deal new property listing",
+    action: () => runQuickCreate("new-opportunity"),
+  },
+  {
+    key: "cmd-new-task",
+    label: t.value.shortcut_new_task,
+    section: t.value.actions,
+    path: "/calendar",
+    iconSrc: iconFor("calendar"),
+    terms: "create task follow-up todo",
+    action: () => runQuickCreate("new-task"),
+  },
 ]);
 
 const loadEntitySearchItems = async () => {
@@ -295,7 +442,7 @@ const loadEntitySearchItems = async () => {
           label: c.full_name || t.value.client,
           section: t.value.client_record,
           path: `/clients/${c.id}`,
-          icon: "◍",
+          iconSrc: iconFor("clients"),
           terms: `client ${c.full_name || ""} ${c.email || ""} ${c.phone || ""}`,
         });
       }
@@ -307,7 +454,7 @@ const loadEntitySearchItems = async () => {
           label: h.address || t.value.house,
           section: h.city ? `${t.value.house} • ${h.city}` : t.value.property_record,
           path: `/houses/${h.id}`,
-          icon: "⌂",
+          iconSrc: iconFor("property"),
           terms: `house property listing ${h.address || ""} ${h.city || ""}`,
         });
       }
@@ -324,7 +471,7 @@ const loadEntitySearchItems = async () => {
 
 const filteredSearchItems = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
-  const source = [...searchItems.value, ...entitySearchItems.value];
+  const source = [...commandItems.value, ...searchItems.value, ...entitySearchItems.value];
   if (!q) return source;
 
   return source.filter((item) => {
@@ -349,6 +496,10 @@ const toggleSearch = async () => {
 const goToSearchResult = async (item) => {
   searchOpen.value = false;
   searchQuery.value = "";
+  if (typeof item.action === "function") {
+    await item.action();
+    return;
+  }
   if (route.path !== item.path) {
     await router.push(item.path);
   }
@@ -360,9 +511,112 @@ const openFirstSearchResult = () => {
   goToSearchResult(first);
 };
 
+const requestSubmitBestEffort = () => {
+  const activeForm = document.activeElement?.closest?.("form");
+  if (activeForm) {
+    activeForm.requestSubmit?.();
+    return true;
+  }
+  const modalForm = document.querySelector(".modal-panel form");
+  if (modalForm) {
+    modalForm.requestSubmit?.();
+    return true;
+  }
+  const routeForm = document.querySelector(".shell-route-stage form");
+  if (routeForm) {
+    routeForm.requestSubmit?.();
+    return true;
+  }
+  return false;
+};
+
+const handleProKeyboardShortcut = (e) => {
+  if (!settings.proKeyboardMode) return false;
+
+  const key = e.key.toLowerCase();
+  const withCmdOrCtrl = e.metaKey || e.ctrlKey;
+  const typing = isTypingContext(e.target);
+
+  if (key === "?" && !typing && !withCmdOrCtrl && !e.altKey) {
+    e.preventDefault();
+    shortcutsHelpOpen.value = !shortcutsHelpOpen.value;
+    return true;
+  }
+  if (key === "/" && !typing && !withCmdOrCtrl && !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    toggleSearch();
+    return true;
+  }
+  if (key === "escape") {
+    if (shortcutsHelpOpen.value) {
+      e.preventDefault();
+      shortcutsHelpOpen.value = false;
+      return true;
+    }
+    if (searchOpen.value) {
+      e.preventDefault();
+      closeSearch();
+      return true;
+    }
+  }
+
+  if (withCmdOrCtrl && !e.altKey && key === "k") {
+    e.preventDefault();
+    toggleSearch();
+    return true;
+  }
+  if (withCmdOrCtrl && !e.altKey && !e.shiftKey && key === "f") {
+    e.preventDefault();
+    toggleSearch();
+    return true;
+  }
+  if (withCmdOrCtrl && !e.altKey && !e.shiftKey && key === "s") {
+    e.preventDefault();
+    requestSubmitBestEffort();
+    return true;
+  }
+  if (withCmdOrCtrl && !e.altKey && !e.shiftKey && key === "enter") {
+    e.preventDefault();
+    requestSubmitBestEffort();
+    return true;
+  }
+
+  if (typing || withCmdOrCtrl || e.altKey || e.shiftKey) return false;
+
+  if (key === "c") {
+    e.preventDefault();
+    runQuickCreate("new-contact");
+    return true;
+  }
+  if (key === "p") {
+    e.preventDefault();
+    runQuickCreate("new-opportunity");
+    return true;
+  }
+  if (key === "t") {
+    e.preventDefault();
+    runQuickCreate("new-task");
+    return true;
+  }
+  if (key === "m") {
+    e.preventDefault();
+    runQuickCreate("new-meeting");
+    return true;
+  }
+
+  return false;
+};
+
 const onWindowKeydown = (e) => {
+  if (handleProKeyboardShortcut(e)) return;
+
   if (settings.shortcuts && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
     if (!isTypingContext(e.target) && e.key === "Escape") {
+      if (shortcutsHelpOpen.value) {
+        e.preventDefault();
+        shortcutsHelpOpen.value = false;
+        return;
+      }
       if (searchOpen.value) {
         e.preventDefault();
         closeSearch();

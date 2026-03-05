@@ -6,6 +6,7 @@ const DEFAULTS = {
   aiModalStrong: true,
   aiTopN: 5,
   shortcuts: true,
+  proKeyboardMode: false,
   sidebarHoverExpand: true,
   dashboardWidgets: {
     overview: true,

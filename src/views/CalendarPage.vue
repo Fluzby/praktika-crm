@@ -101,6 +101,7 @@
           <div>
             <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.event_title }}</label>
             <input
+              ref="eventTitleInputEl"
               class="input"
               v-model.trim="eventTitle"
               :placeholder="t.enter_event_title"
@@ -377,8 +378,22 @@
             <div v-if="selectedCalendarItem.kind === 'event' && (selectedCalendarItem.clientId || selectedCalendarItem.houseId)" class="rounded-lg border p-3" style="border-color: var(--shell-border); background: var(--shell-card);">
               <div class="text-xs mb-1" style="color: var(--shell-text-muted);">{{ t.linked_records }}</div>
               <div style="color: var(--shell-text);" class="space-y-1">
-                <div v-if="selectedCalendarItem.clientId">{{ t.client }}: {{ clientNameById[selectedCalendarItem.clientId] || "—" }}</div>
-                <div v-if="selectedCalendarItem.houseId">{{ t.house }}: {{ houseNameById[selectedCalendarItem.houseId] || "—" }}</div>
+                <button
+                  v-if="selectedCalendarItem.clientId"
+                  class="btn-ghost text-xs"
+                  type="button"
+                  @click="openLinkedEventRecord('client', selectedCalendarItem.clientId)"
+                >
+                  {{ t.client }}: {{ clientNameById[selectedCalendarItem.clientId] || "—" }}
+                </button>
+                <button
+                  v-if="selectedCalendarItem.houseId"
+                  class="btn-ghost text-xs"
+                  type="button"
+                  @click="openLinkedEventRecord('house', selectedCalendarItem.houseId)"
+                >
+                  {{ t.house }}: {{ houseNameById[selectedCalendarItem.houseId] || "—" }}
+                </button>
               </div>
             </div>
             <div class="rounded-lg border p-4 min-h-36" style="border-color: var(--shell-border); background: var(--shell-card);">
@@ -395,7 +410,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import { useT } from "../lib/i18n";
@@ -436,6 +451,7 @@ const eventType = ref("meeting");
 const eventClientId = ref("");
 const eventHouseId = ref("");
 const eventColor = ref("#22c55e");
+const eventTitleInputEl = ref(null);
 const deadlinesByDate = ref({});
 const selectedCalendarItem = ref(null);
 const selectedDayDetails = ref(null);
@@ -1139,6 +1155,19 @@ function openLinkedDeadlineRecord() {
   }
 }
 
+function openLinkedEventRecord(entityType, entityId) {
+  if (!entityId) return;
+  selectedCalendarItem.value = null;
+  selectedDayDetails.value = null;
+  if (entityType === "house") {
+    router.push(`/houses/${entityId}`);
+    return;
+  }
+  if (entityType === "client") {
+    router.push(`/clients/${entityId}`);
+  }
+}
+
 async function openFromRouteQuery() {
   const rawDate = String(route.query.date || "").slice(0, 10);
   const targetDate = isValidDateKey(rawDate) ? rawDate : "";
@@ -1217,12 +1246,29 @@ async function loadEventLinkOptions() {
   }
 }
 
+const onNewTaskShortcut = () => {
+  eventType.value = "deadline";
+  nextTick(() => eventTitleInputEl.value?.focus?.());
+};
+
+const onNewMeetingShortcut = () => {
+  eventType.value = "meeting";
+  nextTick(() => eventTitleInputEl.value?.focus?.());
+};
+
 onMounted(async () => {
+  window.addEventListener("crm:shortcut:new-task", onNewTaskShortcut);
+  window.addEventListener("crm:shortcut:new-meeting", onNewMeetingShortcut);
   if (!eventColor.value) eventColor.value = CALENDAR_COLOR_PRESETS[0];
   eventColor.value = normalizeHexColor(eventColor.value);
   await loadEventsFromDbWithLocalMigration();
   await loadDeadlinesForMonth();
   await loadEventLinkOptions();
   await openFromRouteQuery();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("crm:shortcut:new-task", onNewTaskShortcut);
+  window.removeEventListener("crm:shortcut:new-meeting", onNewMeetingShortcut);
 });
 </script>
