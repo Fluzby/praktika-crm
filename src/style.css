@@ -138,8 +138,38 @@
   }
 
   .modal-panel.modal-panel-strong {
-    @apply bg-black/85 backdrop-blur-xl;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
   }
+
+  .calendar-create-btn {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(37, 99, 235, 0.55);
+    color: #ffffff;
+  }
+
+  .calendar-create-btn:hover {
+    background: rgba(37, 99, 235, 0.32);
+  }
+
+  .calendar-date-toggle-active {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell-accent) 58%, transparent);
+    background: color-mix(in srgb, var(--shell-accent-soft) 56%, transparent);
+  }
+
+  html.theme-light .calendar-create-btn,
+  html.theme-plain .calendar-create-btn {
+    background: rgba(59, 130, 246, 0.16);
+    border: 1px solid rgba(37, 99, 235, 0.38);
+    color: #ffffff;
+  }
+
+  html.theme-light .calendar-create-btn:hover,
+  html.theme-plain .calendar-create-btn:hover {
+    background: rgba(37, 99, 235, 0.26);
+  }
+
 
   .back-to-top {
     position: fixed;
@@ -710,12 +740,6 @@ html.theme-warm body {
   color: #fff2e5;
 }
 
-html.theme-brutalist,
-html.theme-brutalist body {
-  background: #0b0b0b;
-  color: #ffffff;
-}
-
 .theme-glass .glass {
   @apply border-white/15 bg-white/[0.06] backdrop-blur-md;
 }
@@ -728,28 +752,6 @@ html.theme-brutalist body {
 }
 .theme-warm .glass-soft {
   @apply border-white/10 bg-amber-100/[0.04];
-}
-
-.theme-brutalist .glass,
-.theme-brutalist .glass-soft {
-  @apply border-white/80 bg-white/[0.02] rounded-none;
-}
-.theme-brutalist .btn,
-.theme-brutalist .btn-ghost,
-.theme-brutalist .input,
-.theme-brutalist .textarea {
-  @apply rounded-none;
-}
-
-.theme-brutalist .btn-ghost {
-  @apply border-white/70;
-}
-
-.theme-brutalist .back-to-top {
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .theme-glass {
@@ -826,38 +828,6 @@ html.theme-dark body {
   --tap-highlight-color: rgba(245, 158, 11, 0.24);
 }
 
-.theme-brutalist {
-  --nav-border: rgba(255, 255, 255, 0.75);
-  --nav-border-hover: rgba(255, 255, 255, 0.9);
-  --nav-bg: rgba(255, 255, 255, 0.02);
-  --nav-bg-hover: rgba(255, 255, 255, 0.06);
-  --nav-bg-active: rgba(255, 255, 255, 0.12);
-  --nav-border-active: rgba(255, 255, 255, 0.95);
-  --nav-text-active: rgba(0, 0, 0, 0.95);
-  --shell-panel: #0b0b0b;
-  --shell-panel-2: #121212;
-  --shell-card: transparent;
-  --shell-border: rgba(255, 255, 255, 0.78);
-  --shell-border-soft: rgba(255, 255, 255, 0.55);
-  --shell-text: rgba(255, 255, 255, 0.95);
-  --shell-text-muted: rgba(255, 255, 255, 0.7);
-  --shell-text-strong: #ffffff;
-  --shell-accent: #ffffff;
-  --shell-accent-soft: rgba(255, 255, 255, 0.08);
-  --shell-nav-hover: rgba(255, 255, 255, 0.05);
-  --shell-nav-active-bg: rgba(255, 255, 255, 0.12);
-  --shell-nav-active-border: rgba(255, 255, 255, 0.9);
-  --shell-nav-icon-bg: transparent;
-  --shell-shadow: none;
-  --focus-ring-color: rgba(255, 255, 255, 0.58);
-  --tap-highlight-color: rgba(255, 255, 255, 0.3);
-}
-
-.theme-brutalist .iconBtn,
-.theme-brutalist .iconBtnActive {
-  border-radius: 0;
-}
-
 .theme-plain {
   --nav-border: #d0d0d0;
   --nav-border-hover: #b5b5b5;
@@ -887,119 +857,83 @@ html.theme-dark body {
   --tap-highlight-color: rgba(8, 145, 178, 0.18);
 }
 
+/* Original theme = plain mode (strip visual styling). */
 html.theme-plain,
 html.theme-plain body {
-  background: #ffffff;
-  color: #000000;
+  background: #ffffff !important;
+  color: #000000 !important;
 }
 
-.theme-plain .glass,
-.theme-plain .glass-soft,
-.theme-plain .btn,
-.theme-plain .btn-ghost,
-.theme-plain .input,
-.theme-plain .textarea,
-.theme-plain .chip {
-  /* Don't revert to browser defaults. Keep the app's component styling. */
-  all: unset;
-}
-
-.theme-plain .text-white,
-.theme-plain .text-white\/80,
-.theme-plain .text-white\/70,
-.theme-plain .text-white\/60,
-.theme-plain .text-white\/50,
-.theme-plain .text-white\/45,
-.theme-plain .text-white\/40 {
-  color: #000000;
-}
-
-.theme-plain body {
+html.theme-plain body {
   color-scheme: light;
 }
 
-.theme-plain .glass {
-  border-radius: 16px;
-  border: 1px solid rgba(15, 15, 15, 0.1);
-  background: #ffffff;
-  box-shadow: 0 1px 0 rgba(15, 15, 15, 0.04), 0 12px 30px rgba(15, 15, 15, 0.06);
+html.theme-plain .app-shell {
+  background: #ffffff !important;
 }
 
-.theme-plain .glass-soft {
-  border-radius: 16px;
-  border: 1px solid rgba(15, 15, 15, 0.1);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 1px 0 rgba(15, 15, 15, 0.03), 0 10px 24px rgba(15, 15, 15, 0.05);
+html.theme-plain *,
+html.theme-plain *::before,
+html.theme-plain *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+  transition: none !important;
 }
 
-.theme-plain .btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
-  background: #059669; /* emerald-600 */
-  color: #ffffff;
+html.theme-plain .glass,
+html.theme-plain .glass-soft,
+html.theme-plain .shell-nav-panel,
+html.theme-plain .shell-topbar,
+html.theme-plain .shell-route-stage,
+html.theme-plain .modal-panel,
+html.theme-plain .chip,
+html.theme-plain .btn,
+html.theme-plain .btn-ghost,
+html.theme-plain .input,
+html.theme-plain .textarea {
+  border-radius: 0 !important;
 }
 
-.theme-plain .btn:hover {
-  background: #047857; /* emerald-700 */
+html.theme-plain .glass,
+html.theme-plain .glass-soft,
+html.theme-plain .shell-nav-panel,
+html.theme-plain .shell-topbar,
+html.theme-plain .shell-route-stage,
+html.theme-plain .modal-panel {
+  background: #ffffff !important;
+  border: 1px solid #d4d4d4 !important;
 }
 
-.theme-plain .btn-ghost {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(15, 15, 15, 0.1);
-  background: rgba(255, 255, 255, 0.8);
-  color: rgba(15, 15, 15, 0.85);
+html.theme-plain .btn {
+  background: #f0f0f0 !important;
+  border: 1px solid #cfcfcf !important;
+  color: #000000 !important;
 }
 
-.theme-plain .btn-ghost:hover {
-  background: rgba(0, 0, 0, 0.04);
+html.theme-plain .btn:hover {
+  background: #e7e7e7 !important;
 }
 
-.theme-plain .back-to-top {
-  box-shadow: 0 10px 24px rgba(15, 15, 15, 0.12);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+html.theme-plain .btn-ghost {
+  background: #ffffff !important;
+  border: 1px solid #cfcfcf !important;
+  color: #000000 !important;
 }
 
-.theme-plain .input,
-.theme-plain .textarea {
-  width: 100%;
-  border-radius: 0.75rem;
-  background: #ffffff;
-  border: 1px solid rgba(15, 15, 15, 0.1);
-  padding: 0.5rem 0.75rem;
-  color: rgba(15, 15, 15, 0.95);
-  outline: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+html.theme-plain .input,
+html.theme-plain .textarea {
+  background: #ffffff !important;
+  border: 1px solid #cfcfcf !important;
+  color: #000000 !important;
 }
 
-.theme-plain .input:focus,
-.theme-plain .textarea:focus {
-  box-shadow: 0 0 0 2px var(--focus-ring-color);
-}
-
-.theme-plain .chip {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(15, 15, 15, 0.1);
-  color: rgba(15, 15, 15, 0.85);
-}
-
-.theme-plain .modal-backdrop {
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: none;
-}
-
-.theme-plain .modal-panel {
-  background: #ffffff;
-  border-color: #dddddd;
-  color: #000000;
-}
-
-.theme-plain .modal-panel.modal-panel-strong {
-  background: #ffffff;
+html.theme-plain .chip {
+  background: #f6f6f6 !important;
+  border: 1px solid #d0d0d0 !important;
+  color: #000000 !important;
 }
 
 .light .modal-backdrop {
@@ -1020,24 +954,6 @@ html.theme-plain body {
   background: rgba(255, 255, 255, 0.97);
 }
 
-.theme-plain .ai-matchup-list {
-  background: #ffffff;
-  border-color: #e5e5e5;
-}
-
-.theme-plain .ai-card {
-  background: #fafafa;
-  border-color: #e5e5e5;
-}
-
-/* Force fully black text in the AI matching modal for lighter themes. */
-.light .ai-matching-window,
-.light .ai-matching-window *,
-.theme-plain .ai-matching-window,
-.theme-plain .ai-matching-window * {
-  color: #000 !important;
-}
-
 .theme-glass .modal-panel {
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.06);
@@ -1056,85 +972,129 @@ html.theme-plain body {
   background: rgba(12, 8, 6, 0.88);
 }
 
-.theme-brutalist .modal-panel {
-  border-color: rgba(255, 255, 255, 0.7);
+/* Unified text utility mapping by theme (no extra color-filter overrides). */
+html.theme-dark,
+html.theme-glass,
+html.theme-warm {
+  --theme-text-rgb: 255 255 255;
 }
 
-.light .text-white {
-  color: #0f0f0f;
-}
-.light .text-white\/95 {
-  color: rgba(15, 15, 15, 0.95);
-}
-.light .text-white\/90 {
-  color: rgba(15, 15, 15, 0.9);
-}
-.light .text-white\/85 {
-  color: rgba(15, 15, 15, 0.85);
-}
-.light .text-white\/80 {
-  color: rgba(15, 15, 15, 0.8);
-}
-.light .text-white\/75 {
-  color: rgba(15, 15, 15, 0.75);
-}
-.light .text-white\/70 {
-  color: rgba(15, 15, 15, 0.7);
-}
-.light .text-white\/65 {
-  color: rgba(15, 15, 15, 0.65);
-}
-.light .text-white\/60 {
-  color: rgba(15, 15, 15, 0.6);
-}
-.light .text-white\/55 {
-  color: rgba(15, 15, 15, 0.55);
-}
-.light .text-white\/50 {
-  color: rgba(15, 15, 15, 0.5);
-}
-.light .text-white\/45 {
-  color: rgba(15, 15, 15, 0.45);
-}
-.light .text-white\/40 {
-  color: rgba(15, 15, 15, 0.4);
-}
-.light .text-white\/35 {
-  color: rgba(15, 15, 15, 0.35);
-}
-.light .text-white\/30 {
-  color: rgba(15, 15, 15, 0.3);
-}
-.light .text-white\/25 {
-  color: rgba(15, 15, 15, 0.25);
+html.theme-light,
+html.theme-plain {
+  --theme-text-rgb: 15 15 15;
 }
 
-.theme-plain .text-white\/95 {
-  color: rgba(15, 15, 15, 0.95);
+html.theme-dark .text-white,
+html.theme-glass .text-white,
+html.theme-warm .text-white,
+html.theme-light .text-white,
+html.theme-plain .text-white {
+  color: rgb(var(--theme-text-rgb) / 1);
 }
-.theme-plain .text-white\/90 {
-  color: rgba(15, 15, 15, 0.9);
+html.theme-dark .text-white\/95,
+html.theme-glass .text-white\/95,
+html.theme-warm .text-white\/95,
+html.theme-light .text-white\/95,
+html.theme-plain .text-white\/95 {
+  color: rgb(var(--theme-text-rgb) / 0.95);
 }
-.theme-plain .text-white\/85 {
-  color: rgba(15, 15, 15, 0.85);
+html.theme-dark .text-white\/90,
+html.theme-glass .text-white\/90,
+html.theme-warm .text-white\/90,
+html.theme-light .text-white\/90,
+html.theme-plain .text-white\/90 {
+  color: rgb(var(--theme-text-rgb) / 0.9);
 }
-.theme-plain .text-white\/75 {
-  color: rgba(15, 15, 15, 0.75);
+html.theme-dark .text-white\/85,
+html.theme-glass .text-white\/85,
+html.theme-warm .text-white\/85,
+html.theme-light .text-white\/85,
+html.theme-plain .text-white\/85 {
+  color: rgb(var(--theme-text-rgb) / 0.85);
 }
-.theme-plain .text-white\/65 {
-  color: rgba(15, 15, 15, 0.65);
+html.theme-dark .text-white\/80,
+html.theme-glass .text-white\/80,
+html.theme-warm .text-white\/80,
+html.theme-light .text-white\/80,
+html.theme-plain .text-white\/80 {
+  color: rgb(var(--theme-text-rgb) / 0.8);
 }
-.theme-plain .text-white\/55 {
-  color: rgba(15, 15, 15, 0.55);
+html.theme-dark .text-white\/75,
+html.theme-glass .text-white\/75,
+html.theme-warm .text-white\/75,
+html.theme-light .text-white\/75,
+html.theme-plain .text-white\/75 {
+  color: rgb(var(--theme-text-rgb) / 0.75);
 }
-.theme-plain .text-white\/35 {
-  color: rgba(15, 15, 15, 0.35);
+html.theme-dark .text-white\/70,
+html.theme-glass .text-white\/70,
+html.theme-warm .text-white\/70,
+html.theme-light .text-white\/70,
+html.theme-plain .text-white\/70 {
+  color: rgb(var(--theme-text-rgb) / 0.7);
 }
-.theme-plain .text-white\/30 {
-  color: rgba(15, 15, 15, 0.3);
+html.theme-dark .text-white\/65,
+html.theme-glass .text-white\/65,
+html.theme-warm .text-white\/65,
+html.theme-light .text-white\/65,
+html.theme-plain .text-white\/65 {
+  color: rgb(var(--theme-text-rgb) / 0.65);
 }
-.theme-plain .text-white\/25 {
-  color: rgba(15, 15, 15, 0.25);
+html.theme-dark .text-white\/60,
+html.theme-glass .text-white\/60,
+html.theme-warm .text-white\/60,
+html.theme-light .text-white\/60,
+html.theme-plain .text-white\/60 {
+  color: rgb(var(--theme-text-rgb) / 0.6);
+}
+html.theme-dark .text-white\/55,
+html.theme-glass .text-white\/55,
+html.theme-warm .text-white\/55,
+html.theme-light .text-white\/55,
+html.theme-plain .text-white\/55 {
+  color: rgb(var(--theme-text-rgb) / 0.55);
+}
+html.theme-dark .text-white\/50,
+html.theme-glass .text-white\/50,
+html.theme-warm .text-white\/50,
+html.theme-light .text-white\/50,
+html.theme-plain .text-white\/50 {
+  color: rgb(var(--theme-text-rgb) / 0.5);
+}
+html.theme-dark .text-white\/45,
+html.theme-glass .text-white\/45,
+html.theme-warm .text-white\/45,
+html.theme-light .text-white\/45,
+html.theme-plain .text-white\/45 {
+  color: rgb(var(--theme-text-rgb) / 0.45);
+}
+html.theme-dark .text-white\/40,
+html.theme-glass .text-white\/40,
+html.theme-warm .text-white\/40,
+html.theme-light .text-white\/40,
+html.theme-plain .text-white\/40 {
+  color: rgb(var(--theme-text-rgb) / 0.4);
+}
+html.theme-dark .text-white\/35,
+html.theme-glass .text-white\/35,
+html.theme-warm .text-white\/35,
+html.theme-light .text-white\/35,
+html.theme-plain .text-white\/35 {
+  color: rgb(var(--theme-text-rgb) / 0.35);
+}
+html.theme-dark .text-white\/30,
+html.theme-glass .text-white\/30,
+html.theme-warm .text-white\/30,
+html.theme-light .text-white\/30,
+html.theme-plain .text-white\/30 {
+  color: rgb(var(--theme-text-rgb) / 0.3);
+}
+html.theme-dark .text-white\/25,
+html.theme-glass .text-white\/25,
+html.theme-warm .text-white\/25,
+html.theme-light .text-white\/25,
+html.theme-plain .text-white\/25 {
+  color: rgb(var(--theme-text-rgb) / 0.25);
 }
 
 /* Fix utility backgrounds/borders that are hard-coded for dark mode */

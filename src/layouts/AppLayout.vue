@@ -91,6 +91,7 @@
               </button>
             </template>
             <button
+              ref="searchToggleBtnEl"
               class="shell-icon-btn hidden sm:grid"
               type="button"
               :title="t.search_pages"
@@ -99,7 +100,7 @@
               ⌕
             </button>
 
-            <div v-if="searchOpen" class="shell-search-popover">
+            <div v-if="searchOpen" ref="searchPopoverEl" class="shell-search-popover">
               <div class="shell-search-input-wrap">
                 <span class="shell-search-glyph">⌕</span>
                 <input
@@ -255,6 +256,8 @@ const mobileSidebarOpen = ref(false);
 const searchOpen = ref(false);
 const searchQuery = ref("");
 const searchInputEl = ref(null);
+const searchPopoverEl = ref(null);
+const searchToggleBtnEl = ref(null);
 const shortcutsHelpOpen = ref(false);
 const entitySearchLoaded = ref(false);
 const entitySearchLoading = ref(false);
@@ -269,7 +272,7 @@ const MAIN_TAB_SHORTCUT_PATHS = [
   "/archive",
   "/settings",
 ];
-const darkSurfaceThemes = new Set(["dark", "glass", "warm", "brutalist"]);
+const darkSurfaceThemes = new Set(["dark", "glass", "warm"]);
 const searchUseLightIcons = computed(() => darkSurfaceThemes.has(settings.theme || "dark"));
 const searchIconMap = {
   dashboard: { light: dashboardBlack, dark: dashboardWhite },
@@ -390,7 +393,7 @@ const searchItems = computed(() => [
   { key: "settings", label: t.value.settings, section: t.value.main, path: "/settings", iconSrc: iconFor("settings"), terms: "settings preferences theme language workspace config" },
   { key: "calendar", label: t.value.calendar, section: t.value.main, path: "/calendar", iconSrc: iconFor("calendar"), terms: "calendar schedule notes planner session" },
   { key: "archive", label: t.value.archive, section: t.value.main, path: "/archive", iconSrc: iconFor("archive"), terms: "archive archived restore deleted old records" },
-  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "theme dark light glass warm brutalist plain colors mode" },
+  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "theme dark light glass warm plain colors mode" },
   { key: "language", label: t.value.language_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "language locale translation english estonian" },
 ]);
 
@@ -530,6 +533,14 @@ const requestSubmitBestEffort = () => {
   return false;
 };
 
+const closeTopModalIfAny = () => {
+  const backdrops = Array.from(document.querySelectorAll(".modal-backdrop"));
+  if (!backdrops.length) return false;
+  const topmost = backdrops[backdrops.length - 1];
+  topmost.click();
+  return true;
+};
+
 const handleProKeyboardShortcut = (e) => {
   if (!settings.proKeyboardMode) return false;
 
@@ -608,6 +619,11 @@ const handleProKeyboardShortcut = (e) => {
 };
 
 const onWindowKeydown = (e) => {
+  if (e.key === "Escape" && closeTopModalIfAny()) {
+    e.preventDefault();
+    return;
+  }
+
   if (handleProKeyboardShortcut(e)) return;
 
   if (settings.shortcuts && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
@@ -644,12 +660,23 @@ const onWindowKeydown = (e) => {
   toggleSearch();
 };
 
+const onGlobalPointerDown = (e) => {
+  const target = e.target;
+  if (!(target instanceof Element)) return;
+  if (!searchOpen.value) return;
+  if (searchPopoverEl.value?.contains(target)) return;
+  if (searchToggleBtnEl.value?.contains(target)) return;
+  closeSearch();
+};
+
 onMounted(() => {
   window.addEventListener("keydown", onWindowKeydown);
+  window.addEventListener("pointerdown", onGlobalPointerDown);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onWindowKeydown);
+  window.removeEventListener("pointerdown", onGlobalPointerDown);
 });
 
 const pageMeta = computed(() => {

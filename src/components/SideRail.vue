@@ -134,7 +134,7 @@ const t = useT();
 const userName = ref("");
 const userEmail = ref("");
 let authSubscription = null;
-const darkSurfaceThemes = new Set(["dark", "glass", "warm", "brutalist"]);
+const darkSurfaceThemes = new Set(["dark", "glass", "warm"]);
 const useLightIcons = computed(() => darkSurfaceThemes.has(settings.theme || "dark"));
 
 const iconMap = {

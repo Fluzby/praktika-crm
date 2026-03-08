@@ -18,7 +18,6 @@ const requireAuth = async () => {
     if (error) {
       const message = (error.message || "").toLowerCase();
       if (message.includes("refresh token")) {
-        // Local sign-out clears stale tokens that can cause repeated refresh failures.
         await supabase.auth.signOut({ scope: "local" });
       }
       return false;

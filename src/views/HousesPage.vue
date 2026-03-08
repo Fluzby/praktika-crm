@@ -728,10 +728,7 @@ watch(filtered, (rows) => {
     keyboardIndex.value = -1;
     return;
   }
-  if (keyboardIndex.value < 0) {
-    keyboardIndex.value = 0;
-    return;
-  }
+  if (keyboardIndex.value < 0) return;
   if (keyboardIndex.value >= rows.length) keyboardIndex.value = rows.length - 1;
 });
 

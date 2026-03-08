@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 calendar-page">
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_390px] gap-6 items-start">
+      <div class="space-y-4">
       <section class="glass p-4 md:p-5 relative overflow-hidden">
         <div
           class="absolute inset-x-0 top-0 h-24 pointer-events-none"
@@ -32,9 +33,27 @@
           </div>
         </div>
 
-        <div class="relative mt-3 flex items-center gap-2 text-xs" style="color: var(--shell-text-muted);">
-          <span class="chip px-2 py-0.5">{{ t.events }}: {{ monthEventCount }}</span>
-          <span class="chip px-2 py-0.5">{{ t.deadlines }}: {{ monthDeadlineCount }}</span>
+        <div class="relative mt-3 flex items-center gap-2 text-xs flex-wrap" style="color: var(--shell-text-muted);">
+          <span class="chip px-2 py-0.5 inline-flex items-center gap-1.5" style="background: rgba(56, 189, 248, 0.14); border-color: rgba(56, 189, 248, 0.35); color: #bae6fd;">
+            <span class="h-1.5 w-1.5 rounded-full" style="background: #38bdf8;"></span>
+            {{ t.events }}: {{ monthEventCount }}
+          </span>
+          <span class="chip px-2 py-0.5 inline-flex items-center gap-1.5" style="background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35); color: #fde68a;">
+            <span class="h-1.5 w-1.5 rounded-full" style="background: #f59e0b;"></span>
+            {{ t.deadlines }}: {{ monthDeadlineCount }}
+          </span>
+          <span class="chip px-2 py-0.5 inline-flex items-center gap-1.5" style="background: rgba(52, 211, 153, 0.14); border-color: rgba(52, 211, 153, 0.35); color: #a7f3d0;">
+            <span class="h-1.5 w-1.5 rounded-full" style="background: #34d399;"></span>
+            {{ t.meeting }}: {{ monthMeetingCount }}
+          </span>
+          <span class="chip px-2 py-0.5 inline-flex items-center gap-1.5" style="background: rgba(167, 139, 250, 0.16); border-color: rgba(167, 139, 250, 0.35); color: #ddd6fe;">
+            <span class="h-1.5 w-1.5 rounded-full" style="background: #a78bfa;"></span>
+            {{ t.call }}: {{ monthCallCount }}
+          </span>
+          <span class="chip px-2 py-0.5 inline-flex items-center gap-1.5" style="background: rgba(248, 113, 113, 0.14); border-color: rgba(248, 113, 113, 0.35); color: #fecaca;">
+            <span class="h-1.5 w-1.5 rounded-full" style="background: #f87171;"></span>
+            {{ t.deadline }}: {{ monthEventDeadlineCount }}
+          </span>
         </div>
 
         <div class="mt-4 overflow-x-auto">
@@ -54,7 +73,7 @@
                       ? day.events.length
                         ? 'hover:brightness-110'
                         : day.isToday
-                          ? 'border-emerald-400/70 bg-emerald-500/14 hover:bg-emerald-500/18'
+                          ? 'border-white/20 bg-white/[0.08] hover:bg-white/[0.12]'
                           : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.08]'
                       : 'border-white/5 bg-white/[0.01] text-white/20 opacity-45'"
                     :style="dayCellStyle(day)"
@@ -95,9 +114,72 @@
 
       </section>
 
-      <aside class="glass-soft p-4 xl:sticky xl:top-20 space-y-4">
-        <div class="text-sm font-semibold" style="color: var(--shell-text-strong);">{{ t.create_event }}</div>
-        <div class="rounded-xl border p-3 space-y-3" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 82%, transparent);">
+      <section class="glass-soft p-4">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-[0.14em]" style="color: var(--shell-text-muted);">
+              {{ t.events }}
+            </div>
+            <div class="font-semibold text-base leading-tight mt-1" style="color: var(--shell-text-strong);">
+              {{ t.event_history }}
+            </div>
+          </div>
+          <div class="text-xs chip px-2 py-1">{{ allEventsHistory.length }}</div>
+        </div>
+
+        <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+        <div
+          v-for="e in allEventsHistory"
+          :key="`hist-${e.id}`"
+          class="rounded-xl border px-3 py-2.5 flex items-start justify-between gap-3 cursor-pointer"
+          :style="{ borderColor: 'var(--shell-border-soft)', background: 'color-mix(in srgb, var(--shell-card) 88%, transparent)' }"
+          @dblclick="openEventDetails(e)"
+        >
+            <div class="min-w-0 flex items-start gap-2">
+              <input
+                class="mt-1"
+                type="checkbox"
+                :checked="e.status === 'done'"
+                @change="toggleEventDone(e)"
+                :aria-label="e.status === 'done' ? t.mark_as_open : t.mark_as_done"
+              />
+              <div class="min-w-0">
+                <div class="text-sm font-medium truncate" :class="e.status === 'done' ? 'line-through opacity-60' : ''">
+                  {{ e.title }}
+                </div>
+                <div class="text-[11px] mt-0.5" style="color: var(--shell-text-muted);">
+                  {{ eventTypeLabel(e.type) }} • {{ formatDate(e.date) }}
+                  <span v-if="e.repeat === 'yearly'"> • {{ t.yearly }}</span>
+                  <span v-if="e.status === 'done'"> • {{ t.done }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button class="btn-ghost text-xs" type="button" @click="openEventDetails(e)">{{ t.open }}</button>
+              <button class="btn-ghost text-xs" type="button" @click="removeEvent(e.id)">{{ t.delete }}</button>
+            </div>
+          </div>
+
+          <div v-if="allEventsHistory.length === 0" class="text-sm" style="color: var(--shell-text-muted);">
+            {{ t.no_event_history }}
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <aside class="glass-soft p-4 xl:sticky xl:top-0 space-y-4">
+        <div
+          class="rounded-2xl border p-4 space-y-3"
+          style="border-color: var(--shell-border-soft); background: linear-gradient(165deg, color-mix(in srgb, var(--shell-card) 94%, transparent), color-mix(in srgb, var(--shell-panel-2) 70%, var(--shell-card)));"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.14em]" style="color: var(--shell-text-muted);">{{ t.calendar }}</div>
+              <div class="text-sm font-semibold" style="color: var(--shell-text-strong);">{{ t.create_event }}</div>
+            </div>
+            <div class="text-[11px] chip px-2 py-0.5">{{ t.quick_create_shortcuts }}: T</div>
+          </div>
+
           <div>
             <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.event_title }}</label>
             <input
@@ -112,7 +194,7 @@
           <div>
             <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.note }}</label>
             <textarea
-              class="textarea"
+              class="textarea calendar-note-textarea"
               rows="3"
               v-model.trim="eventNote"
               :placeholder="t.optional_note_for_event"
@@ -125,7 +207,7 @@
               <button
                 class="btn-ghost text-sm"
                 type="button"
-                :class="{ 'ring-1 ring-emerald-400/60': eventDateMode === 'today' }"
+                :class="{ 'calendar-date-toggle-active': eventDateMode === 'today' }"
                 @click="eventDateMode = 'today'"
               >
                 {{ t.today }}
@@ -133,7 +215,7 @@
               <button
                 class="btn-ghost text-sm"
                 type="button"
-                :class="{ 'ring-1 ring-emerald-400/60': eventDateMode === 'exact' }"
+                :class="{ 'calendar-date-toggle-active': eventDateMode === 'exact' }"
                 @click="eventDateMode = 'exact'"
               >
                 {{ t.exact_date }}
@@ -147,7 +229,8 @@
             </div>
           </div>
 
-          <div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
             <label class="text-xs mb-1 block" style="color: var(--shell-text-muted);">{{ t.repeat }}</label>
             <select class="input" v-model="eventRepeat">
               <option value="none">{{ t.do_not_repeat }}</option>
@@ -162,6 +245,7 @@
                 {{ option.label }}
               </option>
             </select>
+          </div>
           </div>
 
           <div>
@@ -200,7 +284,7 @@
             </div>
           </div>
 
-          <button class="btn w-full" type="button" @click="addEvent">{{ t.add_event }}</button>
+          <button class="btn calendar-create-btn w-full h-10 text-sm font-semibold" type="button" @click="addEvent">{{ t.add_event }}</button>
         </div>
 
         <div class="rounded-xl border p-3" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 82%, transparent);">
@@ -213,8 +297,16 @@
               :style="eventCardStyle(e)"
             >
               <div class="min-w-0">
-                <div class="text-sm leading-snug">
-                  <span class="opacity-85">◆</span> {{ e.title }}
+                <div class="text-sm leading-snug flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    :checked="e.status === 'done'"
+                    @change="toggleEventDone(e)"
+                    :aria-label="e.status === 'done' ? t.mark_as_open : t.mark_as_done"
+                  />
+                  <span :class="e.status === 'done' ? 'line-through opacity-70' : ''">
+                    <span class="opacity-85">◆</span> {{ e.title }}
+                  </span>
                 </div>
                 <div class="text-[11px] opacity-75">
                   {{ eventTypeLabel(e.type) }} •
@@ -420,6 +512,7 @@ import {
   loadCalendarEvents,
   removeCalendarEvent,
   resetCalendarEvents,
+  setCalendarEventDone,
 } from "../lib/calendarEventsBackend";
 import { useTopbarActions } from "../lib/topbarActions";
 
@@ -576,6 +669,8 @@ function sanitizeEvents(list) {
       clientId: item.clientId ? String(item.clientId) : "",
       houseId: item.houseId ? String(item.houseId) : "",
       repeat: item.repeat === "yearly" ? "yearly" : "none",
+      status: item.status === "done" ? "done" : "open",
+      completedAt: item.completedAt || null,
       createdAt: item.createdAt || new Date().toISOString(),
     }))
     .filter((item) => item.title.length > 0 && isValidDateKey(item.date));
@@ -594,6 +689,8 @@ function normalizeEvents(payload) {
         clientId: item.clientId,
         houseId: item.houseId,
         repeat: item.repeat === "yearly" ? "yearly" : "none",
+        status: item.status === "done" ? "done" : "open",
+        completedAt: item.completedAt || null,
         createdAt: item.createdAt || new Date().toISOString(),
       }))
     );
@@ -613,6 +710,8 @@ function normalizeEvents(payload) {
           clientId: row.clientId || "",
           houseId: row.houseId || "",
           repeat: "none",
+          status: row.status === "done" ? "done" : "open",
+          completedAt: row.completedAt || null,
           createdAt: row.createdAt || new Date().toISOString(),
         });
       }
@@ -757,6 +856,17 @@ const monthDeadlineCount = computed(() =>
   Object.values(deadlinesByDate.value).reduce((sum, items) => sum + items.length, 0)
 );
 
+const monthEventsFlat = computed(() => Object.values(monthEventsByDate.value).flat());
+const monthMeetingCount = computed(() =>
+  monthEventsFlat.value.filter((event) => event.type === "meeting").length
+);
+const monthCallCount = computed(() =>
+  monthEventsFlat.value.filter((event) => event.type === "call").length
+);
+const monthEventDeadlineCount = computed(() =>
+  monthEventsFlat.value.filter((event) => event.type === "deadline").length
+);
+
 const calendarGrid = computed(() => {
   const first = new Date(viewYear.value, viewMonth.value, 1);
   const last = new Date(viewYear.value, viewMonth.value + 1, 0);
@@ -766,15 +876,16 @@ const calendarGrid = computed(() => {
   const cells = [];
 
   for (let i = 0; i < totalCells; i++) {
-    const dayNum = i - startWeekday + 1;
-    const active = dayNum >= 1 && dayNum <= daysInMonth;
-    const date = active ? toDateKey(new Date(viewYear.value, viewMonth.value, dayNum)) : "";
+    const rawDayNum = i - startWeekday + 1;
+    const cellDate = new Date(viewYear.value, viewMonth.value, rawDayNum);
+    const active = cellDate.getMonth() === viewMonth.value;
+    const date = toDateKey(cellDate);
     cells.push({
       key: `${viewYear.value}-${viewMonth.value}-${i}`,
       active,
       date,
-      dayNum: active ? dayNum : "",
-      isToday: active && date === todayKey.value,
+      dayNum: cellDate.getDate(),
+      isToday: date === todayKey.value,
       deadlines: active ? (deadlinesByDate.value[date] || []) : [],
       events: active ? (monthEventsByDate.value[date] || []) : [],
     });
@@ -797,14 +908,19 @@ const upcomingEvents = computed(() =>
     .filter((event) => String(event.title || "").trim().length > 0)
     .map((event) => ({ ...event, nextOccurrence: nextOccurrenceFrom(event, todayKey.value) }))
     .filter((event) => !!event.nextOccurrence)
-    .sort((a, b) => a.nextOccurrence.localeCompare(b.nextOccurrence))
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === "done" ? 1 : -1;
+      return a.nextOccurrence.localeCompare(b.nextOccurrence);
+    })
 );
 
-const pastEvents = computed(() =>
+const allEventsHistory = computed(() =>
   events.value
     .filter((event) => String(event.title || "").trim().length > 0)
-    .filter((event) => event.repeat !== "yearly" && event.date < todayKey.value)
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === "done" ? 1 : -1;
+      return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+    })
 );
 
 const clientNameById = computed(() => {
@@ -1077,6 +1193,27 @@ async function removeEvent(eventId) {
   selectedDayDetails.value = null;
 }
 
+async function toggleEventDone(event) {
+  if (!event?.id) return;
+  const nextDone = event.status !== "done";
+  try {
+    const updated = await setCalendarEventDone(event.id, nextDone);
+    events.value = sanitizeEvents(events.value.map((row) => (row.id === event.id ? updated : row)));
+  } catch {
+    events.value = sanitizeEvents(
+      events.value.map((row) => {
+        if (row.id !== event.id) return row;
+        return {
+          ...row,
+          status: nextDone ? "done" : "open",
+          completedAt: nextDone ? new Date().toISOString() : null,
+        };
+      })
+    );
+    persistEventsToLocal(events.value);
+  }
+}
+
 async function resetCalendar() {
   if (!confirm(t.value.calendar_reset_confirm)) return;
 
@@ -1272,3 +1409,36 @@ onBeforeUnmount(() => {
   window.removeEventListener("crm:shortcut:new-meeting", onNewMeetingShortcut);
 });
 </script>
+
+<style scoped>
+html.theme-dark .calendar-page,
+html.theme-dark .calendar-page *,
+html.theme-glass .calendar-page,
+html.theme-glass .calendar-page *,
+html.theme-warm .calendar-page,
+html.theme-warm .calendar-page * {
+  color: #fff !important;
+}
+
+html.theme-light .calendar-page,
+html.theme-light .calendar-page *,
+html.theme-plain .calendar-page,
+html.theme-plain .calendar-page * {
+  color: #000 !important;
+}
+
+html.theme-light .calendar-page input::placeholder,
+html.theme-light .calendar-page textarea::placeholder,
+html.theme-plain .calendar-page input::placeholder,
+html.theme-plain .calendar-page textarea::placeholder {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
+.calendar-page .calendar-note-textarea {
+  resize: none;
+}
+
+.calendar-page .calendar-create-btn {
+  color: #0f0f0f !important;
+}
+</style>

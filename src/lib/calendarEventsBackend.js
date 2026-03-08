@@ -23,6 +23,8 @@ function mapRowToEvent(row) {
     clientId: row.client_id ? String(row.client_id) : "",
     houseId: row.house_id ? String(row.house_id) : "",
     repeat: normalizeRepeat(row.repeat),
+    status: row.status === "done" ? "done" : "open",
+    completedAt: row.completed_at || null,
     createdAt: row.created_at || new Date().toISOString(),
   };
 }
@@ -37,13 +39,15 @@ function mapEventToInsert(event) {
     client_id: event.clientId || null,
     house_id: event.houseId || null,
     color: normalizeHexColor(event.color),
+    status: "open",
+    completed_at: null,
   };
 }
 
 export async function loadCalendarEvents() {
   const { data, error } = await supabase
     .from("calendar_events")
-    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,created_at")
+    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,status,completed_at,created_at")
     .order("created_at", { ascending: false })
     .limit(1000);
   if (error) throw error;
@@ -55,7 +59,22 @@ export async function createCalendarEvent(event) {
   const { data, error } = await supabase
     .from("calendar_events")
     .insert(payload)
-    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,created_at")
+    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,status,completed_at,created_at")
+    .single();
+  if (error) throw error;
+  return mapRowToEvent(data);
+}
+
+export async function setCalendarEventDone(eventId, done) {
+  const payload = {
+    status: done ? "done" : "open",
+    completed_at: done ? new Date().toISOString() : null,
+  };
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .update(payload)
+    .eq("id", eventId)
+    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,status,completed_at,created_at")
     .single();
   if (error) throw error;
   return mapRowToEvent(data);
@@ -79,7 +98,7 @@ export async function importCalendarEvents(events) {
   const { data, error } = await supabase
     .from("calendar_events")
     .insert(rows)
-    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,created_at");
+    .select("id,title,note,event_date,repeat,type,client_id,house_id,color,status,completed_at,created_at");
   if (error) throw error;
   return (data || []).map(mapRowToEvent);
 }

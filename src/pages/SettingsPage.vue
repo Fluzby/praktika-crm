@@ -63,13 +63,6 @@ useTopbarActions(() => []);
           </button>
           <button
             class="btn-ghost"
-            :class="settings.theme === 'brutalist' ? 'ring-1 ring-white/20' : ''"
-            @click="settings.theme = 'brutalist'"
-          >
-            {{ t.brutalist }}
-          </button>
-          <button
-            class="btn-ghost"
             :class="settings.theme === 'plain' ? 'ring-1 ring-white/20' : ''"
             @click="settings.theme = 'plain'"
           >

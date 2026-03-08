@@ -47,15 +47,16 @@ watch(
 
 export function applyTheme() {
   const root = document.documentElement;
-  const theme = settings.theme || "dark";
   const allThemes = [
     "dark",
     "light",
     "glass",
     "warm",
-    "brutalist",
     "plain",
   ];
+  const rawTheme = settings.theme || "dark";
+  const theme = allThemes.includes(rawTheme) ? rawTheme : "dark";
+  if (settings.theme !== theme) settings.theme = theme;
 
   allThemes.forEach((t) => {
     root.classList.remove(t);
@@ -65,7 +66,7 @@ export function applyTheme() {
   root.classList.add(`theme-${theme}`);
   root.classList.toggle(
     "dark",
-    theme === "dark" || theme === "glass" || theme === "warm" || theme === "brutalist"
+    theme === "dark" || theme === "glass" || theme === "warm"
   );
   root.classList.toggle("light", theme === "light");
 }
