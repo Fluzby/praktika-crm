@@ -2,7 +2,7 @@ import { reactive, watch } from "vue";
 
 const DEFAULTS = {
   lang: "en",
-  theme: "dark",
+  theme: "light",
   aiModalStrong: true,
   aiTopN: 5,
   shortcuts: true,
@@ -50,12 +50,10 @@ export function applyTheme() {
   const allThemes = [
     "dark",
     "light",
-    "glass",
-    "warm",
     "plain",
   ];
-  const rawTheme = settings.theme || "dark";
-  const theme = allThemes.includes(rawTheme) ? rawTheme : "dark";
+  const rawTheme = settings.theme || "light";
+  const theme = allThemes.includes(rawTheme) ? rawTheme : "light";
   if (settings.theme !== theme) settings.theme = theme;
 
   allThemes.forEach((t) => {
@@ -64,9 +62,6 @@ export function applyTheme() {
   });
 
   root.classList.add(`theme-${theme}`);
-  root.classList.toggle(
-    "dark",
-    theme === "dark" || theme === "glass" || theme === "warm"
-  );
+  root.classList.toggle("dark", theme === "dark");
   root.classList.toggle("light", theme === "light");
 }

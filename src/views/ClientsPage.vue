@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="glass p-4">
+    <div class="glass p-4 records-surface">
       <div class="flex flex-col gap-3">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
@@ -25,7 +25,7 @@
       <div v-if="loading" class="text-white/60">{{ t.loading }}</div>
       <div v-else-if="error" class="text-red-300">{{ error }}</div>
 
-      <div v-else class="glass-soft overflow-hidden">
+      <div v-else class="glass-soft overflow-hidden records-surface records-table-surface">
         <div class="overflow-x-auto">
           <table class="w-full min-w-[860px] text-sm" :class="selectionMode ? 'select-none' : ''">
             <thead class="bg-white/[0.02] border-b border-white/10">

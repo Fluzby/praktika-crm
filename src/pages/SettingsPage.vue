@@ -49,20 +49,6 @@ useTopbarActions(() => []);
           </button>
           <button
             class="btn-ghost"
-            :class="settings.theme === 'glass' ? 'ring-1 ring-white/20' : ''"
-            @click="settings.theme = 'glass'"
-          >
-            {{ t.glass }}
-          </button>
-          <button
-            class="btn-ghost"
-            :class="settings.theme === 'warm' ? 'ring-1 ring-white/20' : ''"
-            @click="settings.theme = 'warm'"
-          >
-            {{ t.warm }}
-          </button>
-          <button
-            class="btn-ghost"
             :class="settings.theme === 'plain' ? 'ring-1 ring-white/20' : ''"
             @click="settings.theme = 'plain'"
           >

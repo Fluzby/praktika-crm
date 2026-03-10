@@ -3,8 +3,8 @@
     <div class="shell-nav-header">
       <div class="shell-workspace-badge">R</div>
       <div v-if="!collapsed" class="min-w-0">
-        <div class="shell-workspace-name truncate">Realestate CRM</div>
-        <div class="shell-workspace-subtle truncate">{{ t.workspace }}</div>
+        <div class="shell-workspace-name truncate">Real Estate</div>
+        <div class="shell-workspace-subtle truncate">Client operations</div>
       </div>
     </div>
 
@@ -134,7 +134,7 @@ const t = useT();
 const userName = ref("");
 const userEmail = ref("");
 let authSubscription = null;
-const darkSurfaceThemes = new Set(["dark", "glass", "warm"]);
+const darkSurfaceThemes = new Set(["dark"]);
 const useLightIcons = computed(() => darkSurfaceThemes.has(settings.theme || "dark"));
 
 const iconMap = {

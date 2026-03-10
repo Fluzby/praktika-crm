@@ -1439,6 +1439,24 @@ html.theme-plain .calendar-page textarea::placeholder {
 }
 
 .calendar-page .calendar-create-btn {
+  background: color-mix(in srgb, var(--shell-accent) 16%, white 84%) !important;
+  border-color: color-mix(in srgb, var(--shell-accent) 38%, white 62%) !important;
+  color: var(--shell-accent) !important;
+}
+
+.calendar-page .calendar-create-btn:hover {
+  background: color-mix(in srgb, var(--shell-accent) 24%, white 76%) !important;
+  border-color: color-mix(in srgb, var(--shell-accent) 46%, white 54%) !important;
+}
+
+html.theme-dark .calendar-page .calendar-create-btn {
+  background: color-mix(in srgb, var(--shell-accent) 20%, white 80%) !important;
+  border-color: color-mix(in srgb, var(--shell-accent) 34%, white 66%) !important;
   color: #0f0f0f !important;
+}
+
+html.theme-dark .calendar-page .calendar-create-btn:hover {
+  background: color-mix(in srgb, var(--shell-accent) 28%, white 72%) !important;
+  border-color: color-mix(in srgb, var(--shell-accent) 42%, white 58%) !important;
 }
 </style>

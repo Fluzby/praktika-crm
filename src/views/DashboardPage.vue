@@ -1,51 +1,54 @@
 <template>
-  <div class="space-y-6">
+  <div class="dashboard-page space-y-6">
     <div class="grid grid-cols-12 gap-6">
       <section class="col-span-12 lg:col-span-8 space-y-6">
-        <div v-if="settings.dashboardWidgets.overview" class="glass p-6">
-          <div class="flex items-center justify-between">
+        <div v-if="settings.dashboardWidgets.overview" class="glass dashboard-panel dashboard-panel-hero p-6">
+          <div class="dashboard-panel-head">
             <div>
-              <div class="text-sm text-white/60">{{ t.overview }}</div>
-              <div class="text-lg font-semibold mt-1">{{ t.today }}</div>
+              <div class="dashboard-eyebrow">{{ t.overview }}</div>
+              <div class="dashboard-title-xl mt-2">{{ t.today }}</div>
+              <p class="dashboard-summary mt-3">
+                Portfolio status, recent customer movement, and operational signals in one view.
+              </p>
             </div>
 
-            <div class="text-xs text-white/50" v-if="error">{{ error }}</div>
+            <div class="dashboard-inline-note" v-if="error">{{ error }}</div>
           </div>
 
-          <div class="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">{{ t.clients }}</div>
-              <div class="text-2xl font-semibold mt-1">{{ clientsCount ?? "—" }}</div>
-              <div class="text-xs text-white/45 mt-1">{{ t.total }}</div>
+          <div class="dashboard-metric-grid mt-8">
+            <div class="glass-soft dashboard-metric-card p-4">
+              <div class="dashboard-metric-label">{{ t.clients }}</div>
+              <div class="dashboard-metric-value mt-2">{{ clientsCount ?? "—" }}</div>
+              <div class="dashboard-metric-foot mt-2">{{ t.total }}</div>
             </div>
 
-            <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">{{ t.houses }}</div>
-              <div class="text-2xl font-semibold mt-1">{{ housesCount ?? "—" }}</div>
-              <div class="text-xs text-white/45 mt-1">{{ t.total }}</div>
+            <div class="glass-soft dashboard-metric-card p-4">
+              <div class="dashboard-metric-label">{{ t.houses }}</div>
+              <div class="dashboard-metric-value mt-2">{{ housesCount ?? "—" }}</div>
+              <div class="dashboard-metric-foot mt-2">{{ t.total }}</div>
             </div>
 
-            <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">{{ t.photos }}</div>
-              <div class="text-2xl font-semibold mt-1">{{ photosCount ?? "—" }}</div>
-              <div class="text-xs text-white/45 mt-1">{{ t.stored }}</div>
+            <div class="glass-soft dashboard-metric-card p-4">
+              <div class="dashboard-metric-label">{{ t.photos }}</div>
+              <div class="dashboard-metric-value mt-2">{{ photosCount ?? "—" }}</div>
+              <div class="dashboard-metric-foot mt-2">{{ t.stored }}</div>
             </div>
 
-            <div class="glass-soft p-4">
-              <div class="text-xs text-white/60">{{ t.last_update }}</div>
-              <div class="text-2xl font-semibold mt-1">{{ lastUpdated }}</div>
-              <div class="text-xs text-white/45 mt-1">{{ t.local }}</div>
+            <div class="glass-soft dashboard-metric-card p-4">
+              <div class="dashboard-metric-label">{{ t.last_update }}</div>
+              <div class="dashboard-metric-value mt-2">{{ lastUpdated }}</div>
+              <div class="dashboard-metric-foot mt-2">{{ t.local }}</div>
             </div>
           </div>
         </div>
 
         <!-- KPI widget removed (Active clients / Matches / Cold houses / AI efficiency) -->
 
-        <div v-if="settings.dashboardWidgets.house_availability" class="glass p-6">
-          <div class="flex items-center justify-between">
+        <div v-if="settings.dashboardWidgets.house_availability" class="glass dashboard-panel p-6">
+          <div class="dashboard-panel-head">
             <div>
-              <h2 class="text-lg font-semibold">{{ t.widget_house_availability }}</h2>
-              <p class="text-sm text-white/60 mt-1">{{ t.houses }}</p>
+              <h2 class="dashboard-section-title">{{ t.widget_house_availability }}</h2>
+              <p class="dashboard-summary mt-2">{{ t.houses }}</p>
             </div>
           </div>
 
@@ -82,35 +85,35 @@
             </div>
 
             <div class="flex-1 grid gap-2 text-sm">
-              <div v-for="s in availabilityLegend" :key="s.key" class="flex items-center justify-between gap-6">
+              <div v-for="s in availabilityLegend" :key="s.key" class="dashboard-row-item">
                 <div class="flex items-center gap-2 min-w-0">
                   <span class="h-2.5 w-2.5 rounded-full" :style="{ background: s.color }"></span>
                   <span class="truncate">{{ s.label }}</span>
                 </div>
-                <div class="tabular-nums text-white/60">{{ s.count ?? "—" }}</div>
+                <div class="tabular-nums dashboard-row-meta">{{ s.count ?? "—" }}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div v-if="settings.dashboardWidgets.latest_listings" class="glass p-6">
-          <div class="flex items-center justify-between">
+        <div v-if="settings.dashboardWidgets.latest_listings" class="glass dashboard-panel p-6">
+          <div class="dashboard-panel-head">
             <div>
-              <h2 class="text-lg font-semibold">{{ t.latest_listings }}</h2>
-              <p class="text-sm text-white/60 mt-1">{{ t.recent_houses_subtitle }}</p>
+              <h2 class="dashboard-section-title">{{ t.latest_listings }}</h2>
+              <p class="dashboard-summary mt-2">{{ t.recent_houses_subtitle }}</p>
             </div>
-            <RouterLink to="/houses" class="text-sm text-white/60 hover:text-white">
+            <RouterLink to="/houses" class="dashboard-link">
               {{ t.open }} →
             </RouterLink>
           </div>
 
-          <div v-if="loading" class="mt-5 text-white/60">{{ t.loading }}</div>
+          <div v-if="loading" class="mt-5 dashboard-summary">{{ t.loading }}</div>
 
-          <ul v-else class="mt-5 space-y-2">
+          <ul v-else class="mt-6 space-y-2">
             <li
               v-for="h in recentHouses"
               :key="h.id"
-              class="rounded-xl border border-white/10 bg-black/30 p-4 hover:bg-white/[0.05] transition cursor-pointer"
+              class="dashboard-list-item"
               @dblclick="openHouseFromLatest(h.id)"
             >
               <div class="flex items-start justify-between gap-4">
@@ -118,7 +121,7 @@
                   <RouterLink :to="`/houses/${h.id}`" class="font-semibold hover:underline">
                     {{ h.address }}
                   </RouterLink>
-                  <div class="text-sm text-white/60 mt-1">
+                  <div class="dashboard-list-sub mt-1">
                     {{ h.city || "—" }} • {{ h.rooms ?? "?" }} rooms • €{{ h.price ?? "—" }}
                   </div>
                 </div>
@@ -133,7 +136,7 @@
               </div>
             </li>
 
-            <li v-if="recentHouses.length === 0" class="text-white/60">
+            <li v-if="recentHouses.length === 0" class="dashboard-summary">
               {{ t.no_houses_found }}
             </li>
           </ul>
@@ -141,20 +144,19 @@
       </section>
 
       <aside class="col-span-12 lg:col-span-4 space-y-6">
-        <div v-if="settings.dashboardWidgets.calendar" class="glass-soft p-6">
+        <div v-if="settings.dashboardWidgets.calendar" class="glass dashboard-panel dashboard-panel-subtle p-6">
           <div
-            class="relative rounded-2xl border p-4"
-            style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 84%, transparent);"
+            class="relative dashboard-calendar-frame p-4"
           >
             <div class="flex items-start justify-between gap-3">
               <div>
-                <h2 class="font-semibold" style="color: var(--shell-text-strong);">{{ t.calendar }}</h2>
-                <div class="text-sm mt-0.5" style="color: var(--shell-text-muted);">{{ dashboardMonthLabel }}</div>
+                <h2 class="dashboard-section-title">{{ t.calendar }}</h2>
+                <div class="dashboard-summary mt-1">{{ dashboardMonthLabel }}</div>
               </div>
               <div class="flex items-center gap-2">
                 <button class="btn-ghost text-xs px-2.5 py-1.5" type="button" @click="dashboardGoToday">{{ t.today }}</button>
-                <button class="h-8 w-8 rounded-lg border" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);" type="button" @click="dashboardPrevMonth">←</button>
-                <button class="h-8 w-8 rounded-lg border" style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 88%, transparent); color: var(--shell-text);" type="button" @click="dashboardNextMonth">→</button>
+                <button class="dashboard-calendar-arrow" type="button" @click="dashboardPrevMonth">←</button>
+                <button class="dashboard-calendar-arrow" type="button" @click="dashboardNextMonth">→</button>
                 <RouterLink to="/calendar" class="btn-ghost text-xs px-2.5 py-1.5">{{ t.open }}</RouterLink>
               </div>
             </div>
@@ -163,15 +165,14 @@
               <div
                 v-for="d in calendarWeekdays"
                 :key="`h-${d}`"
-                class="text-center py-1 text-[10px] uppercase tracking-[0.12em]"
-                style="color: var(--shell-text-muted);"
+                class="dashboard-calendar-weekday"
               >
                 {{ d }}
               </div>
               <button
                 v-for="day in dashboardCalendarCells"
                 :key="day.key"
-                class="relative h-11 rounded-xl border text-left px-2 pt-1.5 transition"
+                class="dashboard-calendar-day"
                 :class="dashboardDayClass(day)"
                 :style="dashboardDayStyle(day)"
                 @click="openDashboardDate(day)"
@@ -191,19 +192,17 @@
 
             <div
               v-if="dashboardSelectedDate"
-              class="mt-3 rounded-xl border p-3"
-              style="border-color: var(--shell-border-soft); background: color-mix(in srgb, var(--shell-card) 90%, transparent);"
+              class="mt-3 dashboard-calendar-detail p-3"
             >
               <div class="flex items-center justify-between mb-2">
-                <div class="text-xs" style="color: var(--shell-text-muted);">{{ t.selected }}: {{ dashboardSelectedDate }}</div>
+                <div class="text-xs dashboard-summary">{{ t.selected }}: {{ dashboardSelectedDate }}</div>
                 <button class="btn-ghost text-xs px-2 py-1" type="button" @click="dashboardSelectedDate = ''">{{ t.close }}</button>
               </div>
               <div class="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
                 <div
                   v-for="event in dashboardSelectedItems.events"
                   :key="`ev-${event.id}`"
-                  class="rounded-md border px-2 py-1.5"
-                  style="border-color: var(--shell-border-soft);"
+                  class="dashboard-calendar-entry"
                   :class="event.id ? 'cursor-pointer hover:brightness-110' : ''"
                   :style="dashboardDayStyle({ active: true, events: [event] })"
                   @dblclick="openEventInCalendar(event)"
@@ -214,8 +213,7 @@
                 <div
                   v-for="task in dashboardSelectedItems.tasks"
                   :key="`tk-${task.id}`"
-                  class="rounded-md border px-2 py-1.5"
-                  style="border-color: var(--shell-border-soft);"
+                  class="dashboard-calendar-entry"
                   :class="task.id ? 'cursor-pointer hover:bg-white/[0.05] hover:brightness-110' : ''"
                   @dblclick="openTaskInCalendar(task)"
                 >
@@ -239,10 +237,7 @@
                     </button>
                   </div>
                 </div>
-                <div
-                  v-if="!dashboardSelectedItems.events.length && !dashboardSelectedItems.tasks.length"
-                  style="color: var(--shell-text-muted);"
-                >
+                <div v-if="!dashboardSelectedItems.events.length && !dashboardSelectedItems.tasks.length" class="dashboard-summary">
                   {{ t.no_items_for_day }}
                 </div>
               </div>
@@ -250,34 +245,34 @@
           </div>
         </div>
 
-        <div v-if="settings.dashboardWidgets.follow_ups" class="glass-soft p-6">
+        <div v-if="settings.dashboardWidgets.follow_ups" class="glass dashboard-panel dashboard-panel-subtle p-6">
           <div>
             <div class="flex items-center justify-between">
-              <h2 class="font-semibold">{{ t.follow_ups }}</h2>
-              <span class="text-xs text-white/50">{{ taskSummary.totalOpen }} {{ t.open }}</span>
+              <h2 class="dashboard-section-title">{{ t.follow_ups }}</h2>
+              <span class="dashboard-inline-note">{{ taskSummary.totalOpen }} {{ t.open }}</span>
             </div>
-            <div class="grid grid-cols-3 gap-2 mt-3 text-sm">
-              <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-                <div class="text-xs text-white/50">{{ t.overdue }}</div>
+            <div class="grid grid-cols-3 gap-2 mt-4 text-sm">
+              <div class="dashboard-stat-block">
+                <div class="dashboard-metric-label">{{ t.overdue }}</div>
                 <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.overdue }}</div>
-                <div class="text-[11px] text-white/45 mt-1">{{ t.needs_attention }}</div>
+                <div class="dashboard-metric-foot mt-1">{{ t.needs_attention }}</div>
               </div>
-              <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-                <div class="text-xs text-white/50">{{ t.today }}</div>
+              <div class="dashboard-stat-block">
+                <div class="dashboard-metric-label">{{ t.today }}</div>
                 <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.today }}</div>
-                <div class="text-[11px] text-white/45 mt-1">{{ t.due_now }}</div>
+                <div class="dashboard-metric-foot mt-1">{{ t.due_now }}</div>
               </div>
-              <div class="rounded-xl border border-sky-500/25 bg-sky-500/8 p-3">
-                <div class="text-xs text-white/50">{{ t.upcoming }}</div>
+              <div class="dashboard-stat-block">
+                <div class="dashboard-metric-label">{{ t.upcoming }}</div>
                 <div class="font-semibold text-lg leading-tight mt-1">{{ taskSummary.upcoming }}</div>
-                <div class="text-[11px] text-white/45 mt-1">{{ t.planned_next }}</div>
+                <div class="dashboard-metric-foot mt-1">{{ t.planned_next }}</div>
               </div>
             </div>
             <div v-if="taskSummary.recent.length" class="mt-3 space-y-2 text-xs">
               <button
                 v-for="task in taskSummary.recent"
                 :key="task.id"
-                class="w-full text-left rounded-lg border border-white/10 px-3 py-2 hover:bg-white/[0.05] transition"
+                class="dashboard-list-item w-full text-left"
                 type="button"
                 :disabled="!task.entityId"
                 @click="openTaskEntity(task)"
@@ -289,58 +284,58 @@
                     {{ taskTypeLabel(task.type) }}
                   </span>
                 </div>
-                <div v-if="task.note" class="text-white/45 mt-1 truncate">{{ task.note }}</div>
-                <div class="text-white/45 mt-1 flex items-center justify-between gap-2">
+                <div v-if="task.note" class="dashboard-list-sub mt-1 truncate">{{ task.note }}</div>
+                <div class="dashboard-list-sub mt-1 flex items-center justify-between gap-2">
                   <span>{{ task.dueDate || t.no_due_date }} • {{ task.entityType }}</span>
-                  <span v-if="task.entityId" class="text-white/65">{{ t.open }}</span>
+                  <span v-if="task.entityId" class="dashboard-row-meta">{{ t.open }}</span>
                 </div>
               </button>
             </div>
-            <div v-else class="mt-3 text-xs text-white/45">{{ t.no_follow_ups_yet }}</div>
+            <div v-else class="mt-3 text-xs dashboard-summary">{{ t.no_follow_ups_yet }}</div>
           </div>
         </div>
 
-        <div v-if="settings.dashboardWidgets.recent_activity" class="glass-soft p-6">
-          <h2 class="font-semibold mb-3">{{ t.recent_activity }}</h2>
-          <ul class="space-y-2 text-sm text-white/60">
-            <li v-for="a in activity" :key="a.id" class="flex items-center justify-between gap-3">
+        <div v-if="settings.dashboardWidgets.recent_activity" class="glass dashboard-panel dashboard-panel-subtle p-6">
+          <h2 class="dashboard-section-title mb-3">{{ t.recent_activity }}</h2>
+          <ul class="space-y-2 text-sm">
+            <li v-for="a in activity" :key="a.id" class="dashboard-row-item">
               <span class="truncate">
                 {{ a.type }} {{ a.entity }}<span v-if="a.label"> — {{ a.label }}</span>
               </span>
-              <span class="text-xs text-white/40 whitespace-nowrap">
+              <span class="text-xs dashboard-row-meta whitespace-nowrap">
                 {{ new Date(a.created_at).toLocaleDateString() }}
               </span>
             </li>
-            <li v-if="activity.length===0">{{ t.no_recent_activity }}</li>
+            <li v-if="activity.length===0" class="dashboard-summary">{{ t.no_recent_activity }}</li>
           </ul>
         </div>
 
-        <div v-if="settings.dashboardWidgets.recent_clients" class="glass p-6">
-          <div class="flex items-center justify-between">
+        <div v-if="settings.dashboardWidgets.recent_clients" class="glass dashboard-panel p-6">
+          <div class="dashboard-panel-head">
             <div>
-              <h2 class="text-lg font-semibold">{{ t.recent_clients }}</h2>
-              <p class="text-sm text-white/60 mt-1">{{ t.recent_clients_subtitle }}</p>
+              <h2 class="dashboard-section-title">{{ t.recent_clients }}</h2>
+              <p class="dashboard-summary mt-2">{{ t.recent_clients_subtitle }}</p>
             </div>
-            <RouterLink to="/clients" class="text-sm text-white/60 hover:text-white">
+            <RouterLink to="/clients" class="dashboard-link">
               {{ t.open }} →
             </RouterLink>
           </div>
 
-          <div v-if="loading" class="mt-5 text-white/60">{{ t.loading }}</div>
+          <div v-if="loading" class="mt-5 dashboard-summary">{{ t.loading }}</div>
 
-          <ul v-else class="mt-5 space-y-2">
+          <ul v-else class="mt-6 space-y-2">
             <li
               v-for="c in recentClients"
               :key="c.id"
-              class="rounded-xl border border-white/10 bg-black/30 p-4 hover:bg-white/[0.05] transition"
+              class="dashboard-list-item"
             >
               <div class="font-semibold">{{ c.full_name }}</div>
-              <div class="text-sm text-white/60 mt-1">
+              <div class="dashboard-list-sub mt-1">
                 {{ c.phone || "—" }} • {{ c.email || "—" }}
               </div>
             </li>
 
-            <li v-if="recentClients.length === 0" class="text-white/60">
+            <li v-if="recentClients.length === 0" class="dashboard-summary">
               {{ t.no_clients_found }}
             </li>
           </ul>
@@ -1389,3 +1384,190 @@ onMounted(() => {
   onBeforeUnmount(() => window.removeEventListener("match-changed", handler));
 });
 </script>
+
+<style scoped>
+.dashboard-page {
+  color: var(--shell-text);
+}
+
+.dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.dashboard-panel-hero {
+  padding-top: 0.9rem;
+}
+
+.dashboard-panel-subtle {
+  background: var(--shell-card);
+}
+
+.dashboard-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--shell-text-muted);
+}
+
+.dashboard-title-xl {
+  font-size: clamp(1.25rem, 1.9vw, 1.8rem);
+  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--shell-text-strong);
+}
+
+.dashboard-section-title {
+  font-size: 1.05rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--shell-text-strong);
+}
+
+.dashboard-summary {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--shell-text-muted);
+}
+
+.dashboard-inline-note {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--shell-text-muted);
+}
+
+.dashboard-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.dashboard-metric-card {
+  min-height: 98px;
+  justify-content: flex-end;
+}
+
+.dashboard-metric-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--shell-text-muted);
+}
+
+.dashboard-metric-value {
+  font-size: clamp(1.15rem, 1.7vw, 1.7rem);
+  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--shell-text-strong);
+}
+
+.dashboard-metric-foot,
+.dashboard-row-meta,
+.dashboard-list-sub {
+  font-size: 0.8rem;
+  color: var(--shell-text-muted);
+}
+
+.dashboard-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--shell-accent);
+  text-decoration: none;
+}
+
+.dashboard-list-item {
+  border: 1px solid var(--shell-border-soft);
+  background: color-mix(in srgb, var(--shell-panel) 72%, white 28%);
+  border-radius: 18px;
+  padding: 1rem 1.05rem;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.dashboard-list-item:hover {
+  border-color: var(--shell-border);
+  background: color-mix(in srgb, var(--shell-panel) 82%, white 18%);
+}
+
+.dashboard-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid var(--shell-border-soft);
+  background: color-mix(in srgb, var(--shell-panel) 78%, white 22%);
+}
+
+.dashboard-calendar-frame,
+.dashboard-calendar-detail,
+.dashboard-calendar-entry,
+.dashboard-stat-block {
+  border: 1px solid var(--shell-border-soft);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--shell-panel) 78%, white 22%);
+}
+
+.dashboard-calendar-entry,
+.dashboard-stat-block {
+  padding: 0.75rem;
+}
+
+.dashboard-calendar-arrow {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--shell-border-soft);
+  background: transparent;
+  color: var(--shell-text);
+}
+
+.dashboard-calendar-weekday {
+  padding-block: 0.25rem;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--shell-text-muted);
+}
+
+.dashboard-calendar-day {
+  position: relative;
+  height: 2.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--shell-border-soft);
+  background: transparent;
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  color: var(--shell-text);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.dashboard-calendar-day:hover {
+  border-color: var(--shell-border);
+}
+
+@media (max-width: 767px) {
+  .dashboard-metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-panel-head {
+    flex-direction: column;
+  }
+}
+</style>

@@ -38,13 +38,13 @@ defineEmits(["click"]);
 
 <style scoped>
 .shell-nav-item {
-  min-height: 46px;
+  min-height: 42px;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.65rem;
   border-radius: 12px;
-  padding: 0.55rem 0.7rem;
+  padding: 0.45rem 0.55rem;
   border: 1px solid transparent;
   color: var(--shell-text);
   transition:
@@ -65,27 +65,27 @@ defineEmits(["click"]);
 }
 
 .shell-nav-item-icon {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 10px;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0;
   display: grid;
   place-items: center;
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
-  background: var(--shell-nav-icon-bg);
-  border: 1px solid var(--shell-border-soft);
+  background: transparent;
+  border: 0;
   flex-shrink: 0;
 }
 
 .shell-nav-item-label {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .shell-nav-item-icon-img {
-  width: 1rem;
-  height: 1rem;
+  width: 1.1rem;
+  height: 1.1rem;
   object-fit: contain;
   display: block;
 }
@@ -95,28 +95,34 @@ defineEmits(["click"]);
 }
 
 .shell-nav-item-icon-img.is-zoomed {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .shell-nav-item-active {
-  background: var(--shell-nav-active-bg);
-  border-color: var(--shell-nav-active-border);
+  background: color-mix(in srgb, var(--shell-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--shell-accent) 22%, transparent);
   color: var(--shell-text-strong);
+  border-radius: 12px;
 }
 
 .shell-nav-item-active .shell-nav-item-icon {
-  background: var(--shell-accent-soft);
-  border-color: var(--shell-nav-active-border);
+  background: transparent;
+  border-color: transparent;
 }
 
 .shell-nav-item.is-collapsed {
   justify-content: center;
-  padding-inline: 0.4rem;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  margin-inline: auto;
+  border-radius: 12px;
 }
 
 .shell-nav-item.is-collapsed .shell-nav-item-icon {
-  width: 2rem;
-  height: 2rem;
+  width: 1.1rem;
+  height: 1.1rem;
 }
 </style>

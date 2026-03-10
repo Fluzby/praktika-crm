@@ -272,7 +272,7 @@ const MAIN_TAB_SHORTCUT_PATHS = [
   "/archive",
   "/settings",
 ];
-const darkSurfaceThemes = new Set(["dark", "glass", "warm"]);
+const darkSurfaceThemes = new Set(["dark"]);
 const searchUseLightIcons = computed(() => darkSurfaceThemes.has(settings.theme || "dark"));
 const searchIconMap = {
   dashboard: { light: dashboardBlack, dark: dashboardWhite },
@@ -393,7 +393,7 @@ const searchItems = computed(() => [
   { key: "settings", label: t.value.settings, section: t.value.main, path: "/settings", iconSrc: iconFor("settings"), terms: "settings preferences theme language workspace config" },
   { key: "calendar", label: t.value.calendar, section: t.value.main, path: "/calendar", iconSrc: iconFor("calendar"), terms: "calendar schedule notes planner session" },
   { key: "archive", label: t.value.archive, section: t.value.main, path: "/archive", iconSrc: iconFor("archive"), terms: "archive archived restore deleted old records" },
-  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "theme dark light glass warm plain colors mode" },
+  { key: "theme", label: t.value.theme_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "theme dark light plain colors mode" },
   { key: "language", label: t.value.language_settings, section: t.value.settings, path: "/settings", iconSrc: iconFor("settings"), terms: "language locale translation english estonian" },
 ]);
 
