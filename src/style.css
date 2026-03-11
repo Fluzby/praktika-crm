@@ -803,7 +803,7 @@ html.theme-dark body {
 }
 
 .theme-dark .app-shell {
-  background: #000000;
+  background: transparent !important;
 }
 
 .theme-warm {
@@ -1227,7 +1227,7 @@ html.theme-dark {
 }
 
 .app-shell {
-  background: var(--shell-bg) !important;
+  background: transparent !important;
   color: var(--shell-text);
   display: flex;
   min-height: 100vh;
@@ -1447,16 +1447,26 @@ html.theme-dark .shell-sidebar.is-collapsed .shell-user-chip {
   top: 0;
   border: 0 !important;
   border-radius: 0;
-  padding: 6px 2px 10px;
-  background: rgba(255, 255, 255, 0.015) !important;
+  padding: 6px 2px 7px;
+  background: transparent !important;
   box-shadow: none !important;
-  backdrop-filter: saturate(140%) blur(28px);
-  -webkit-backdrop-filter: saturate(140%) blur(28px);
   z-index: 20;
+  isolation: isolate;
 }
 
-html.theme-dark .shell-topbar {
-  background: rgba(18, 18, 18, 0.015) !important;
+.shell-topbar::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 0;
+  background: color-mix(in srgb, var(--shell-bg) 18%, transparent);
+  backdrop-filter: saturate(160%) blur(18px);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+html.theme-dark .shell-topbar::before {
+  background: color-mix(in srgb, #121212 18%, transparent);
 }
 
 .shell-page-title {
@@ -1547,8 +1557,8 @@ html.theme-dark .glass,
 html.theme-dark .glass-soft,
 html.theme-dark .records-surface,
 html.theme-dark .records-table-surface {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .shell-search-input-wrap {

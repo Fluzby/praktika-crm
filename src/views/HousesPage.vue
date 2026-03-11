@@ -117,7 +117,22 @@
                 <td class="px-4 py-3 text-white/75 tabular-nums whitespace-nowrap">{{ h.size_m2 ? `${h.size_m2} m²` : "—" }}</td>
                 <td class="px-4 py-3 text-white/85 tabular-nums whitespace-nowrap">€{{ h.price ?? "—" }}</td>
                 <td class="px-4 py-3 text-white/60">
-                  <div class="truncate max-w-[260px]">{{ normalizeTagList(h.tags).join(", ") || "—" }}</div>
+                  <div v-if="normalizeTagList(h.tags).length" class="flex max-w-[260px] flex-wrap gap-1.5">
+                    <span
+                      v-for="tag in normalizeTagList(h.tags).slice(0, 2)"
+                      :key="tag"
+                      class="chip"
+                    >
+                      {{ tag }}
+                    </span>
+                    <span
+                      v-if="normalizeTagList(h.tags).length > 2"
+                      class="chip"
+                    >
+                      +{{ normalizeTagList(h.tags).length - 2 }}
+                    </span>
+                  </div>
+                  <div v-else>—</div>
                 </td>
                 <td class="px-4 py-3 text-white/50 whitespace-nowrap">{{ formatDate(h.created_at) }}</td>
                 <td class="px-4 py-3 text-right" @click.stop>
