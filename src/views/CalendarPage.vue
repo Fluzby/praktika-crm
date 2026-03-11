@@ -358,8 +358,9 @@
               <div
                 v-for="event in selectedDayDetails.events"
                 :key="`day-ev-${event.id}`"
-                class="rounded-lg border p-3"
+                class="rounded-lg border p-3 cursor-pointer"
                 style="border-color: var(--shell-border); background: var(--shell-card);"
+                @click="openEventDetails(event)"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
@@ -369,7 +370,7 @@
                     </div>
                     <div v-if="event.note" class="text-xs mt-1.5 opacity-85 whitespace-pre-wrap">{{ event.note }}</div>
                   </div>
-                  <button class="btn-ghost text-xs shrink-0" type="button" @click="openEventDetails(event)">
+                  <button class="btn-ghost text-xs shrink-0" type="button" @click.stop="openEventDetails(event)">
                     {{ t.open }}
                   </button>
                 </div>
@@ -381,15 +382,16 @@
               <div
                 v-for="deadline in selectedDayDetails.deadlines"
                 :key="`day-dl-${deadline.id}`"
-                class="rounded-lg border p-3"
+                class="rounded-lg border p-3 cursor-pointer"
                 style="border-color: var(--shell-border); background: var(--shell-card);"
+                @click="openDeadlineDetails(deadline)"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <div class="font-medium">● {{ deadline.title }}</div>
                     <div class="text-xs mt-1 opacity-80">{{ deadline.entityType || "record" }}</div>
                   </div>
-                  <button class="btn-ghost text-xs shrink-0" type="button" @click="openDeadlineDetails(deadline)">
+                  <button class="btn-ghost text-xs shrink-0" type="button" @click.stop="openDeadlineDetails(deadline)">
                     {{ t.open }}
                   </button>
                 </div>
