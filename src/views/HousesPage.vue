@@ -5,7 +5,7 @@
         <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1">
           <input
-            class="input"
+            class="input property-inventory-search"
             :placeholder="t.search_houses_placeholder"
             v-model.trim="q"
           />
